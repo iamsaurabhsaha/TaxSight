@@ -1,7 +1,7 @@
 """Interview step definitions and DAG registry for the tax interview flow."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 from ai_tax_prep.core.tax_profile import TaxProfile
 
@@ -409,11 +409,11 @@ _register(InterviewStep(
 
 # --- Helper functions ---
 
-def get_step(step_id: str) -> Optional[InterviewStep]:
+def get_step(step_id: str) -> InterviewStep | None:
     return STEPS.get(step_id)
 
 
-def get_next_step(step_id: str, profile: TaxProfile) -> Optional[str]:
+def get_next_step(step_id: str, profile: TaxProfile) -> str | None:
     step = STEPS.get(step_id)
     if not step:
         return None

@@ -1,7 +1,5 @@
 """Typer CLI application — main entry point."""
 
-from datetime import datetime
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -69,7 +67,7 @@ def session_create(
     manager = SessionManager()
     try:
         session = manager.create_session(name=name, tax_year=tax_year)
-        console.print(f"[green]Session created![/green]")
+        console.print("[green]Session created![/green]")
         console.print(f"  Name: {session.name}")
         console.print(f"  ID:   {session.id}")
         console.print(f"  Year: {session.tax_year}")
@@ -82,7 +80,7 @@ def session_create(
 
 @session_app.command("list")
 def session_list(
-    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status"),
+    status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
 ):
     """List all tax preparation sessions."""
     manager = SessionManager()
@@ -133,14 +131,15 @@ def session_delete(
 
 # --- Document commands ---
 from ai_tax_prep.cli.documents import docs_app
+
 app.add_typer(docs_app, name="docs")
 
 
 # --- Interview command ---
 @app.command()
 def interview(
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Session name to start/resume"),
-    session_id: Optional[str] = typer.Option(None, "--id", help="Session ID to start/resume"),
+    name: str | None = typer.Option(None, "--name", "-n", help="Session name to start/resume"),
+    session_id: str | None = typer.Option(None, "--id", help="Session ID to start/resume"),
 ):
     """Start or resume a tax preparation interview."""
     if not name and not session_id:
@@ -165,7 +164,7 @@ def calculate(
 @app.command()
 def report(
     name: str = typer.Option(..., "--name", "-n", help="Session name"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output PDF path"),
+    output: str | None = typer.Option(None, "--output", "-o", help="Output PDF path"),
 ):
     """Generate a PDF tax report."""
     from ai_tax_prep.cli.report import run_report
@@ -191,9 +190,19 @@ def version():
 
 
 @app.callback()
-def main():
+def main(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed output"),
+    debug: bool = typer.Option(False, "--debug", help="Show debug information"),
+):
     """AI Tax Prep Assistant — Privacy-first tax preparation with BYOK LLM support."""
-    pass
+    import logging
+
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s %(levelname)s: %(message)s")
+    elif verbose:
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
 
 if __name__ == "__main__":

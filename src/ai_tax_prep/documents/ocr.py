@@ -1,12 +1,11 @@
 """Tesseract OCR wrapper for tax document text extraction."""
 
 from pathlib import Path
-from typing import Optional
 
 from PIL import Image
 
 
-def extract_text(file_path: str | Path) -> Optional[str]:
+def extract_text(file_path: str | Path) -> str | None:
     """Extract text from an image or PDF using Tesseract OCR.
 
     Returns the raw text string, or None if extraction fails.

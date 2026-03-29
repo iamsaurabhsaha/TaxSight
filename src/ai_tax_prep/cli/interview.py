@@ -1,6 +1,5 @@
 """CLI interview command — interactive terminal interview loop."""
 
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -10,7 +9,6 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from ai_tax_prep.core.interview_engine import InterviewEngine
 from ai_tax_prep.core.interview_steps import get_step
 from ai_tax_prep.core.session import SessionManager
-from ai_tax_prep.llm.client import LLMClient
 
 console = Console()
 
@@ -25,8 +23,8 @@ HELP_TEXT = """
 
 
 def run_interview(
-    session_name: Optional[str] = None,
-    session_id: Optional[str] = None,
+    session_name: str | None = None,
+    session_id: str | None = None,
 ):
     """Run the interactive tax interview."""
     manager = SessionManager()
@@ -179,7 +177,7 @@ def _display_step_message(engine: InterviewEngine):
         for chunk in engine.stream_step_message():
             console.print(chunk, end="", highlight=False)
         console.print()  # Newline after streaming
-    except Exception as e:
+    except Exception:
         # Fallback to non-streaming
         console.print()
         try:

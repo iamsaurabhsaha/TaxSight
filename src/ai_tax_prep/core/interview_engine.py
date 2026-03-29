@@ -1,7 +1,6 @@
 """Interview engine — state machine orchestrator that drives the conversational flow."""
 
 import json
-from typing import Optional
 
 from ai_tax_prep.core.interview_steps import (
     InterviewStep,
@@ -38,7 +37,7 @@ from ai_tax_prep.llm.prompts import (
 class InterviewEngine:
     """Drives the tax interview — manages state, LLM calls, and profile updates."""
 
-    def __init__(self, session_id: str, llm_client: Optional[LLMClient] = None):
+    def __init__(self, session_id: str, llm_client: LLMClient | None = None):
         self.session_id = session_id
         self.llm = llm_client or LLMClient()
 
@@ -77,7 +76,7 @@ class InterviewEngine:
     def _get_db(self):
         return self._db_factory()
 
-    def get_current_step(self) -> Optional[InterviewStep]:
+    def get_current_step(self) -> InterviewStep | None:
         return get_step(self.current_step_id)
 
     def get_progress(self) -> dict:
@@ -93,7 +92,7 @@ class InterviewEngine:
         finally:
             db.close()
 
-    def _save_message(self, role: str, content: str, step_id: Optional[str] = None):
+    def _save_message(self, role: str, content: str, step_id: str | None = None):
         """Persist a chat message."""
         db = self._get_db()
         try:
@@ -537,7 +536,7 @@ class InterviewEngine:
         }
         return mapping.get(income_type, "other_income")
 
-    def go_back(self) -> Optional[str]:
+    def go_back(self) -> str | None:
         """Go back to the previous step. Returns the previous step ID or None."""
         # Simple approach: look at chat history to find the last step transition
         step_order = [

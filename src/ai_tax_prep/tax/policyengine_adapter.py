@@ -1,7 +1,5 @@
 """PolicyEngine adapter — translates TaxProfile to PolicyEngine API format and runs calculations."""
 
-import json
-from typing import Optional
 
 import httpx
 

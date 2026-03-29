@@ -1,7 +1,6 @@
 """Application settings with BYOK LLM configuration."""
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,12 +25,12 @@ class Settings(BaseSettings):
 
     # LLM Provider
     llm_provider: str = Field(default="anthropic", description="LLM provider to use")
-    model: Optional[str] = Field(default=None, description="Model override")
+    model: str | None = Field(default=None, description="Model override")
 
     # API Keys (read from standard env vars, no prefix)
-    anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
-    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
-    gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
 
     # Ollama
     ollama_base_url: str = Field(
@@ -57,7 +56,7 @@ class Settings(BaseSettings):
         return DEFAULT_MODELS.get(self.llm_provider, DEFAULT_MODELS["anthropic"])
 
     @property
-    def api_key(self) -> Optional[str]:
+    def api_key(self) -> str | None:
         key_map = {
             "anthropic": self.anthropic_api_key,
             "openai": self.openai_api_key,

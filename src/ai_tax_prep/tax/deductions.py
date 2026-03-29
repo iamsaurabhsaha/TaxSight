@@ -1,6 +1,5 @@
 """Deduction and credit finder — surfaces applicable deductions/credits using rules + LLM."""
 
-from typing import Optional
 
 from ai_tax_prep.core.tax_profile import TaxProfile
 from ai_tax_prep.llm.client import LLMClient
@@ -175,7 +174,7 @@ def find_deductions_and_credits(profile: TaxProfile, pe_result: dict) -> list[di
 def explain_deductions_with_llm(
     suggestions: list[dict],
     profile: TaxProfile,
-    llm: Optional[LLMClient] = None,
+    llm: LLMClient | None = None,
 ) -> str:
     """Use LLM to generate a plain-English summary of deduction/credit findings."""
     if not llm:

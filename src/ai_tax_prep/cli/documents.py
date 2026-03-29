@@ -1,7 +1,6 @@
 """CLI commands for document upload, listing, and review."""
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -23,7 +22,7 @@ VALID_DOC_TYPES = list(DOC_TYPE_NAMES.keys())
 def upload(
     file: Path = typer.Argument(..., help="Path to the document image or PDF"),
     session_name: str = typer.Option(..., "--session", "-s", help="Session name"),
-    doc_type: Optional[str] = typer.Option(None, "--type", "-t", help=f"Document type: {', '.join(VALID_DOC_TYPES)}"),
+    doc_type: str | None = typer.Option(None, "--type", "-t", help=f"Document type: {', '.join(VALID_DOC_TYPES)}"),
 ):
     """Upload and parse a tax document (W-2, 1099, etc.)."""
     if not file.exists():

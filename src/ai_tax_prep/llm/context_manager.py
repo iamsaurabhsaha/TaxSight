@@ -1,6 +1,5 @@
 """Chat context management — token tracking, auto-summarization, checkpointing."""
 
-from typing import Optional
 
 from ai_tax_prep.config.settings import get_settings
 from ai_tax_prep.db.database import get_session_factory, init_db
@@ -11,7 +10,7 @@ from ai_tax_prep.llm.client import LLMClient
 class ContextManager:
     """Manages chat context window — tracks tokens, auto-summarizes before overflow."""
 
-    def __init__(self, session_id: str, llm: Optional[LLMClient] = None):
+    def __init__(self, session_id: str, llm: LLMClient | None = None):
         self.session_id = session_id
         self.settings = get_settings()
         self.llm = llm or LLMClient()

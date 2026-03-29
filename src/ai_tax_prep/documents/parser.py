@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from ai_tax_prep.core.tax_profile import (
     CapitalGain,
@@ -16,7 +15,6 @@ from ai_tax_prep.core.tax_profile import (
 from ai_tax_prep.db.database import get_session_factory, init_db
 from ai_tax_prep.db.models import Document
 from ai_tax_prep.documents.ocr import extract_text, is_tesseract_available
-from ai_tax_prep.documents.schemas import DOC_TYPE_SCHEMAS
 from ai_tax_prep.documents.vision import classify_document, extract_with_vision
 from ai_tax_prep.llm.client import LLMClient
 
@@ -24,7 +22,7 @@ from ai_tax_prep.llm.client import LLMClient
 class DocumentParser:
     """Orchestrates document parsing: OCR + vision → validate → store → apply to profile."""
 
-    def __init__(self, session_id: str, llm: Optional[LLMClient] = None):
+    def __init__(self, session_id: str, llm: LLMClient | None = None):
         self.session_id = session_id
         self.llm = llm or LLMClient()
         init_db()
@@ -36,7 +34,7 @@ class DocumentParser:
     def parse_document(
         self,
         file_path: str | Path,
-        doc_type: Optional[str] = None,
+        doc_type: str | None = None,
     ) -> dict:
         """Parse a tax document using OCR and/or LLM vision.
 

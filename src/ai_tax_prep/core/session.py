@@ -1,7 +1,5 @@
 """Session lifecycle management — create, resume, list."""
 
-import json
-from typing import Optional
 
 from ai_tax_prep.core.tax_profile import TaxProfile
 from ai_tax_prep.db.database import get_session_factory, init_db
@@ -28,7 +26,7 @@ class SessionManager:
         finally:
             db.close()
 
-    def list_sessions(self, status: Optional[str] = None) -> list[Session]:
+    def list_sessions(self, status: str | None = None) -> list[Session]:
         db = self._get_db()
         try:
             repo = SessionRepository(db)
@@ -36,7 +34,7 @@ class SessionManager:
         finally:
             db.close()
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         db = self._get_db()
         try:
             repo = SessionRepository(db)
@@ -44,7 +42,7 @@ class SessionManager:
         finally:
             db.close()
 
-    def get_session_by_name(self, name: str) -> Optional[Session]:
+    def get_session_by_name(self, name: str) -> Session | None:
         db = self._get_db()
         try:
             repo = SessionRepository(db)

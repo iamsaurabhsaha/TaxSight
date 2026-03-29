@@ -1,15 +1,13 @@
 """CRUD operations for sessions and tax profiles."""
 
 import json
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session as DbSession
 
 from ai_tax_prep.db.models import (
     ChatMessage,
     ChatSummary,
-    Document,
     Session,
     TaxProfile,
 )
@@ -29,13 +27,13 @@ class SessionRepository:
         self.db.refresh(session)
         return session
 
-    def get(self, session_id: str) -> Optional[Session]:
+    def get(self, session_id: str) -> Session | None:
         return self.db.query(Session).filter(Session.id == session_id).first()
 
-    def get_by_name(self, name: str) -> Optional[Session]:
+    def get_by_name(self, name: str) -> Session | None:
         return self.db.query(Session).filter(Session.name == name).first()
 
-    def list_all(self, status: Optional[str] = None) -> list[Session]:
+    def list_all(self, status: str | None = None) -> list[Session]:
         query = self.db.query(Session).order_by(Session.updated_at.desc())
         if status:
             query = query.filter(Session.status == status)
@@ -45,14 +43,14 @@ class SessionRepository:
         session = self.get(session_id)
         if session:
             session.current_step = step
-            session.updated_at = datetime.now(timezone.utc)
+            session.updated_at = datetime.now(UTC)
             self.db.commit()
 
     def update_status(self, session_id: str, status: str) -> None:
         session = self.get(session_id)
         if session:
             session.status = status
-            session.updated_at = datetime.now(timezone.utc)
+            session.updated_at = datetime.now(UTC)
             self.db.commit()
 
     def delete(self, session_id: str) -> bool:
@@ -68,7 +66,7 @@ class TaxProfileRepository:
     def __init__(self, db: DbSession):
         self.db = db
 
-    def get_by_session(self, session_id: str) -> Optional[TaxProfile]:
+    def get_by_session(self, session_id: str) -> TaxProfile | None:
         return (
             self.db.query(TaxProfile)
             .filter(TaxProfile.session_id == session_id)
@@ -81,7 +79,7 @@ class TaxProfileRepository:
             existing = json.loads(profile.profile_data or "{}")
             existing.update(data)
             profile.profile_data = json.dumps(existing)
-            profile.updated_at = datetime.now(timezone.utc)
+            profile.updated_at = datetime.now(UTC)
             self.db.commit()
 
     def set_filing_status(self, session_id: str, status: str) -> None:
@@ -106,7 +104,7 @@ class ChatRepository:
         session_id: str,
         role: str,
         content: str,
-        step_id: Optional[str] = None,
+        step_id: str | None = None,
         token_count: int = 0,
     ) -> ChatMessage:
         msg = ChatMessage(
@@ -122,7 +120,7 @@ class ChatRepository:
         return msg
 
     def get_messages(
-        self, session_id: str, limit: Optional[int] = None
+        self, session_id: str, limit: int | None = None
     ) -> list[ChatMessage]:
         query = (
             self.db.query(ChatMessage)
@@ -154,7 +152,7 @@ class ChatRepository:
         self.db.commit()
         return summary
 
-    def get_latest_summary(self, session_id: str) -> Optional[ChatSummary]:
+    def get_latest_summary(self, session_id: str) -> ChatSummary | None:
         return (
             self.db.query(ChatSummary)
             .filter(ChatSummary.session_id == session_id)

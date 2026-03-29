@@ -1,7 +1,6 @@
 """Hybrid tax calculation engine — orchestrates PolicyEngine + custom logic."""
 
 import json
-from typing import Optional
 
 from ai_tax_prep.config.settings import get_settings
 from ai_tax_prep.core.tax_profile import TaxProfile
@@ -14,14 +13,14 @@ from ai_tax_prep.tax.custom_calcs import (
     calculate_se_tax_detail,
     calculate_withholding_and_refund,
 )
-from ai_tax_prep.tax.deductions import explain_deductions_with_llm, find_deductions_and_credits
+from ai_tax_prep.tax.deductions import find_deductions_and_credits
 from ai_tax_prep.tax.policyengine_adapter import calculate_local, calculate_via_api
 
 
 class TaxEngine:
     """Orchestrates tax calculations using PolicyEngine + custom logic."""
 
-    def __init__(self, session_id: str, llm: Optional[LLMClient] = None):
+    def __init__(self, session_id: str, llm: LLMClient | None = None):
         self.session_id = session_id
         self.settings = get_settings()
         self.llm = llm or LLMClient()

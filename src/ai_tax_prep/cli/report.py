@@ -1,7 +1,6 @@
 """CLI commands for tax calculation and PDF report generation."""
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -64,10 +63,10 @@ def run_calculate(session_name: str):
                 console.print(f"  [yellow]?[/yellow] {s['name']} — {s['explanation'][:80]}...")
 
     console.print()
-    console.print("[dim]Run 'tax-prep report --name \"{}\"' to generate a PDF report.[/dim]".format(session_name))
+    console.print(f"[dim]Run 'tax-prep report --name \"{session_name}\"' to generate a PDF report.[/dim]")
 
 
-def run_report(session_name: str, output: Optional[str] = None):
+def run_report(session_name: str, output: str | None = None):
     """Generate a PDF report for a session."""
     manager = SessionManager()
     session = manager.get_session_by_name(session_name)

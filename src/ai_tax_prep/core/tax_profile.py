@@ -1,6 +1,5 @@
 """Pydantic models representing a complete taxpayer profile."""
 
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -181,7 +180,7 @@ class TaxProfile(BaseModel):
     income: Income = Field(default_factory=Income)
     adjustments: Adjustments = Field(default_factory=Adjustments)
     itemized_deductions: ItemizedDeductions = Field(default_factory=ItemizedDeductions)
-    use_itemized: Optional[bool] = None  # None = auto-optimize
+    use_itemized: bool | None = None  # None = auto-optimize
     payments: Payments = Field(default_factory=Payments)
     tax_year: int = 2025
 

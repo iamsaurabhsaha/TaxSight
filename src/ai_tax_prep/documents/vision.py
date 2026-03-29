@@ -3,11 +3,9 @@
 import base64
 import json
 from pathlib import Path
-from typing import Optional
 
 from ai_tax_prep.documents.schemas import DOC_TYPE_NAMES, DOC_TYPE_SCHEMAS
 from ai_tax_prep.llm.client import LLMClient
-
 
 VISION_EXTRACTION_PROMPT = """\
 You are a tax document data extractor. Analyze this image of a {doc_type_name} \
@@ -35,7 +33,7 @@ Return valid JSON only.
 """
 
 
-def classify_document(file_path: str | Path, llm: Optional[LLMClient] = None) -> dict:
+def classify_document(file_path: str | Path, llm: LLMClient | None = None) -> dict:
     """Use LLM vision to classify a tax document type.
 
     Returns: {"doc_type": str, "confidence": float}
@@ -73,7 +71,7 @@ def classify_document(file_path: str | Path, llm: Optional[LLMClient] = None) ->
 def extract_with_vision(
     file_path: str | Path,
     doc_type: str,
-    llm: Optional[LLMClient] = None,
+    llm: LLMClient | None = None,
 ) -> dict:
     """Use LLM vision to extract structured data from a tax document.
 
