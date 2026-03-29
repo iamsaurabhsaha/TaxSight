@@ -39,11 +39,11 @@ class Session(Base):
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
-    tax_profile = relationship("TaxProfile", back_populates="session", uselist=False)
-    documents = relationship("Document", back_populates="session")
-    chat_messages = relationship("ChatMessage", back_populates="session")
-    chat_summaries = relationship("ChatSummary", back_populates="session")
-    calculation_results = relationship("CalculationResult", back_populates="session")
+    tax_profile = relationship("TaxProfile", back_populates="session", uselist=False, cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="session", cascade="all, delete-orphan")
+    chat_messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+    chat_summaries = relationship("ChatSummary", back_populates="session", cascade="all, delete-orphan")
+    calculation_results = relationship("CalculationResult", back_populates="session", cascade="all, delete-orphan")
 
 
 class TaxProfile(Base):

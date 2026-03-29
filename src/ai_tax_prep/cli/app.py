@@ -131,6 +131,11 @@ def session_delete(
         console.print(f"[green]Session '{name}' deleted.[/green]")
 
 
+# --- Document commands ---
+from ai_tax_prep.cli.documents import docs_app
+app.add_typer(docs_app, name="docs")
+
+
 # --- Interview command ---
 @app.command()
 def interview(
@@ -144,6 +149,38 @@ def interview(
 
     from ai_tax_prep.cli.interview import run_interview
     run_interview(session_name=name, session_id=session_id)
+
+
+# --- Calculate command ---
+@app.command()
+def calculate(
+    name: str = typer.Option(..., "--name", "-n", help="Session name"),
+):
+    """Calculate tax estimate for a session."""
+    from ai_tax_prep.cli.report import run_calculate
+    run_calculate(session_name=name)
+
+
+# --- Report command ---
+@app.command()
+def report(
+    name: str = typer.Option(..., "--name", "-n", help="Session name"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output PDF path"),
+):
+    """Generate a PDF tax report."""
+    from ai_tax_prep.cli.report import run_report
+    run_report(session_name=name, output=output)
+
+
+# --- What-If command ---
+@app.command("what-if")
+def what_if(
+    name: str = typer.Option(..., "--name", "-n", help="Session name"),
+    scenario: str = typer.Option(..., "--scenario", "-s", help="Scenario (e.g., ira_contribution=5000)"),
+):
+    """Run a what-if tax scenario comparison."""
+    from ai_tax_prep.cli.report import run_whatif
+    run_whatif(session_name=name, scenario=scenario)
 
 
 # --- Top-level commands ---

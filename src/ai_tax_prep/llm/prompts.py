@@ -379,4 +379,9 @@ def build_messages(
         if msg["role"] != "system":
             messages.append(msg)
 
+    # Anthropic requires at least one user message
+    has_user_msg = any(m["role"] == "user" for m in messages)
+    if not has_user_msg:
+        messages.append({"role": "user", "content": "Let's get started."})
+
     return messages
