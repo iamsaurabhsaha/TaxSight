@@ -82,6 +82,58 @@ If they have no dependents, that's fine — acknowledge and move on.
 Current profile: {profile_summary}
 """,
 
+    "document_upload": """\
+Ask the user if they have tax documents to upload for {tax_year}.
+
+Explain that they can upload:
+- W-2s (wage statements from employers)
+- 1099-NEC (freelance/self-employment income)
+- 1099-INT (interest income from banks)
+- 1099-DIV (dividend income from investments)
+- 1099-B (stock/crypto sales)
+- 1099-R (retirement distributions)
+
+Tell them to type the file path to each document (e.g., ~/Documents/w2.png) \
+and we'll automatically extract all the data. They can upload multiple documents one at a time.
+
+When they're done uploading, they can type "done" to continue.
+If they don't have documents handy, they can type /skip to enter information manually instead.
+
+Keep it brief and friendly.
+""",
+
+    "document_review": """\
+We've extracted data from the user's uploaded documents. Here's what we found:
+
+{document_summary}
+
+Present this information clearly and ask the user:
+1. Does everything look correct?
+2. Are there any corrections needed?
+3. Are there any other documents they want to upload?
+
+If no documents were uploaded, just say we'll collect information manually and move on.
+
+Current profile: {profile_summary}
+""",
+
+    "income_gaps": """\
+Based on the documents uploaded, we've captured the following income:
+
+{document_summary}
+
+Ask the user if they have ANY other income for {tax_year} that wasn't covered by their documents:
+- Any additional W-2s from other jobs?
+- Any freelance or side income not on a 1099?
+- Rental income from properties?
+- Any other miscellaneous income?
+
+If they say no, that's fine — we have everything we need from the documents.
+If they have additional income, collect the details.
+
+Current profile: {profile_summary}
+""",
+
     "income_sources": """\
 Ask the user what types of income they received in {tax_year}.
 

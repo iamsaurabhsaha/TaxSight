@@ -142,7 +142,64 @@ class InterviewEngine:
             "w2_count": len(self.profile.income.w2s) + 1,
             "total_federal_withholding": f"{self.profile.income.total_federal_withholding():,.2f}",
             "total_state_withholding": f"{self.profile.income.total_state_withholding():,.2f}",
+            "document_summary": self._get_document_summary(),
         }
+
+    def _get_document_summary(self) -> str:
+        """Get a summary of uploaded documents and extracted data."""
+        try:
+            from ai_tax_prep.documents.parser import DocumentParser
+            parser = DocumentParser(self.session_id, self.llm)
+            docs = parser.get_documents()
+            if not docs:
+                return "No documents uploaded yet."
+            lines = []
+            for doc in docs:
+                data = doc.get("extracted_data", {})
+                conf = doc.get("confidence", 0)
+                doc_type = doc.get("doc_type", "unknown")
+                from ai_tax_prep.documents.schemas import DOC_TYPE_NAMES
+                label = DOC_TYPE_NAMES.get(doc_type, doc_type)
+                lines.append(f"\n{label} (confidence: {conf:.0%}):")
+                for k, v in data.items():
+                    if v and v != 0 and v != 0.0 and v != "":
+                        if isinstance(v, float):
+                            lines.append(f"  {k}: ${v:,.2f}")
+                        else:
+                            lines.append(f"  {k}: {v}")
+            return "\n".join(lines) if lines else "No documents uploaded yet."
+        except Exception:
+            return "No documents uploaded yet."
+
+    def upload_document(self, file_path: str) -> dict:
+        """Upload and parse a document during the interview."""
+        from pathlib import Path
+        from ai_tax_prep.documents.parser import DocumentParser
+
+        path = Path(file_path).expanduser()
+        if not path.exists():
+            return {"success": False, "error": f"File not found: {path}"}
+
+        try:
+            parser = DocumentParser(self.session_id, self.llm)
+            result = parser.parse_document(path)
+
+            # Auto-apply to profile
+            if result.get("extracted_data"):
+                self.profile = parser.apply_to_profile(
+                    result["extracted_data"], result["doc_type"], self.profile
+                )
+                self._save_profile()
+
+            return {
+                "success": True,
+                "doc_type": result["doc_type"],
+                "extracted_data": result["extracted_data"],
+                "confidence": result["confidence"],
+                "needs_review": result["needs_review"],
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def generate_step_message(self) -> str:
         """Generate the LLM's opening message for the current step."""

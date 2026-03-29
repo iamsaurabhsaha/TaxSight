@@ -19,6 +19,12 @@ HELP_TEXT = """
   /status  — Show progress and collected data
   /help    — Show this help message
   /quit    — Save and exit (you can resume later)
+
+[bold]Document upload:[/bold]
+  During the document upload step, type a file path to upload:
+    ~/Documents/w2.png
+    /path/to/1099.pdf
+  Type 'done' when finished uploading.
 """
 
 
@@ -119,6 +125,13 @@ def run_interview(
                 console.print(f"[dim]Unknown command: {command}. Type /help for options.[/dim]")
                 continue
 
+        # Handle document upload during document_upload step
+        if engine.current_step_id == "document_upload" and not user_input.lower().startswith("done"):
+            file_path = user_input.strip().strip("'\"")
+            if _looks_like_file_path(file_path):
+                _handle_document_upload(engine, file_path)
+                continue
+
         # Process user input through the engine
         with Progress(
             SpinnerColumn(),
@@ -186,3 +199,68 @@ def _display_step_message(engine: InterviewEngine):
         except Exception as e2:
             console.print(f"[red]Error generating message:[/red] {e2}")
             console.print("[dim]You can still type your answer or /skip to continue.[/dim]")
+
+
+def _looks_like_file_path(text: str) -> bool:
+    """Check if input looks like a file path."""
+    from pathlib import Path
+
+    text = text.strip()
+    if not text:
+        return False
+    # Common file path indicators
+    if text.startswith(("~/", "/", "./", "../")):
+        return True
+    if any(text.lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".pdf", ".tiff", ".bmp", ".gif", ".webp")):
+        return True
+    # Check if the expanded path actually exists
+    try:
+        return Path(text).expanduser().exists()
+    except Exception:
+        return False
+
+
+def _handle_document_upload(engine: InterviewEngine, file_path: str):
+    """Handle a document upload during the interview."""
+    from ai_tax_prep.documents.schemas import DOC_TYPE_NAMES
+
+    console.print(f"\n[dim]Uploading {file_path}...[/dim]")
+
+    with console.status("Parsing document with AI vision..."):
+        result = engine.upload_document(file_path)
+
+    if not result["success"]:
+        console.print(f"[red]Error:[/red] {result['error']}")
+        console.print("[dim]Try another file or type 'done' to continue.[/dim]")
+        return
+
+    doc_type = result["doc_type"]
+    confidence = result["confidence"]
+    data = result["extracted_data"]
+    label = DOC_TYPE_NAMES.get(doc_type, doc_type)
+    conf_color = "green" if confidence >= 0.85 else "yellow" if confidence >= 0.6 else "red"
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Document:[/bold] {label}\n"
+        f"[bold]Confidence:[/bold] [{conf_color}]{confidence:.0%}[/{conf_color}]",
+        title="Extracted",
+        border_style="blue",
+    ))
+
+    # Show key extracted fields
+    if data:
+        for key, value in data.items():
+            if value and value != 0 and value != 0.0 and value != "":
+                if isinstance(value, float):
+                    console.print(f"  {key}: ${value:,.2f}")
+                else:
+                    console.print(f"  {key}: {value}")
+
+    console.print()
+    console.print("[green]Data applied to your profile.[/green]")
+
+    if result["needs_review"]:
+        console.print("[yellow]Low confidence — please verify the numbers above.[/yellow]")
+
+    console.print("[dim]Upload another document or type 'done' to continue.[/dim]")

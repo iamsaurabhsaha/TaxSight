@@ -21,7 +21,7 @@ class InterviewStep:
 # --- Routing functions ---
 
 def route_after_dependents(profile: TaxProfile) -> str:
-    return "income_sources"
+    return "document_upload"
 
 
 def route_income_sources(profile: TaxProfile) -> str:
@@ -177,7 +177,38 @@ _register(InterviewStep(
     next_step=route_after_dependents,
 ))
 
-# ===== INCOME =====
+# ===== DOCUMENT UPLOAD =====
+
+_register(InterviewStep(
+    id="document_upload",
+    category="income",
+    title="Document Upload",
+    description="Ask the user to upload tax documents (W-2s, 1099s, etc.) for automatic parsing.",
+    required_fields=[],
+    skippable=True,
+    next_step="document_review",
+))
+
+_register(InterviewStep(
+    id="document_review",
+    category="income",
+    title="Document Review",
+    description="Show what was extracted from uploaded documents and ask the user to confirm.",
+    required_fields=[],
+    next_step="income_gaps",
+))
+
+_register(InterviewStep(
+    id="income_gaps",
+    category="income",
+    title="Additional Income",
+    description="Ask about any income NOT covered by uploaded documents.",
+    required_fields=[],
+    skippable=True,
+    next_step=route_after_other_income,
+))
+
+# ===== INCOME (manual fallback) =====
 
 _register(InterviewStep(
     id="income_sources",
