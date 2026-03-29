@@ -76,8 +76,17 @@ def run_interview(
         if not user_input:
             continue
 
+        # Handle document upload — check BEFORE slash commands since file paths start with /
+        if engine.current_step_id == "document_upload" and user_input.lower().strip() != "done":
+            # Don't treat short slash commands as file paths
+            first_word = user_input.split()[0] if user_input.split() else user_input
+            is_slash_cmd = first_word.lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit")
+            if not is_slash_cmd and _looks_like_file_path(first_word):
+                _handle_multi_upload(engine, user_input)
+                continue
+
         # Handle slash commands
-        if user_input.startswith("/"):
+        if user_input.startswith("/") and user_input.split()[0].lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit"):
             command = user_input.lower().split()[0]
 
             if command == "/quit" or command == "/exit":
@@ -123,13 +132,6 @@ def run_interview(
 
             else:
                 console.print(f"[dim]Unknown command: {command}. Type /help for options.[/dim]")
-                continue
-
-        # Handle document upload during document_upload step
-        if engine.current_step_id == "document_upload" and not user_input.lower().startswith("done"):
-            file_path = user_input.strip().strip("'\"")
-            if _looks_like_file_path(file_path):
-                _handle_document_upload(engine, file_path)
                 continue
 
         # Process user input through the engine
@@ -201,11 +203,58 @@ def _display_step_message(engine: InterviewEngine):
             console.print("[dim]You can still type your answer or /skip to continue.[/dim]")
 
 
+def _handle_multi_upload(engine: InterviewEngine, raw_input: str):
+    """Parse input that may contain one or multiple file paths and upload each."""
+    import re
+    from pathlib import Path
+
+    raw = raw_input.strip()
+
+    # Remove trailing "done" if user appended it
+    if raw.lower().endswith(" done"):
+        raw = raw[:-5].strip()
+
+    # Strategy: split by common PDF/image extensions to find file boundaries
+    # This handles paths with spaces (common in macOS)
+    file_extensions = r'\.(pdf|png|jpg|jpeg|tiff|bmp|gif|webp)'
+    parts = re.split(f'({file_extensions})\\s+(?=/|~)', raw, flags=re.IGNORECASE)
+
+    # Reconstruct file paths
+    paths = []
+    i = 0
+    while i < len(parts):
+        chunk = parts[i]
+        # Check if next part is an extension
+        if i + 1 < len(parts) and re.match(file_extensions, parts[i + 1], re.IGNORECASE):
+            paths.append(chunk + parts[i + 1])
+            i += 2
+        else:
+            if chunk.strip():
+                paths.append(chunk)
+            i += 1
+
+    # If splitting didn't work well, try as a single path
+    if not paths or (len(paths) == 1 and paths[0] == raw):
+        # Try single path — remove backslash escapes
+        single_path = raw.replace("\\ ", " ")
+        _handle_document_upload(engine, single_path)
+        return
+
+    # Upload each file
+    for file_path in paths:
+        file_path = file_path.strip().replace("\\ ", " ")
+        if file_path:
+            _handle_document_upload(engine, file_path)
+
+    console.print()
+    console.print(f"[dim]Uploaded {len(paths)} document(s). Upload more or type 'done' to continue.[/dim]")
+
+
 def _looks_like_file_path(text: str) -> bool:
     """Check if input looks like a file path."""
     from pathlib import Path
 
-    text = text.strip()
+    text = text.strip().replace("\\ ", " ")
     if not text:
         return False
     # Common file path indicators
