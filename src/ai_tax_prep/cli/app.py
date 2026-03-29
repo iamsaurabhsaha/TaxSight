@@ -131,6 +131,21 @@ def session_delete(
         console.print(f"[green]Session '{name}' deleted.[/green]")
 
 
+# --- Interview command ---
+@app.command()
+def interview(
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Session name to start/resume"),
+    session_id: Optional[str] = typer.Option(None, "--id", help="Session ID to start/resume"),
+):
+    """Start or resume a tax preparation interview."""
+    if not name and not session_id:
+        console.print("[red]Please specify a session:[/red] --name <name> or --id <id>")
+        raise typer.Exit(1)
+
+    from ai_tax_prep.cli.interview import run_interview
+    run_interview(session_name=name, session_id=session_id)
+
+
 # --- Top-level commands ---
 @app.command()
 def version():
