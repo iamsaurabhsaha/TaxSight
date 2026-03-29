@@ -44,8 +44,13 @@ class TaxEngine:
             pe_result = self._fallback_estimate(profile)
 
         # Step 2: Custom calculations (withholding, refund, SE detail)
-        custom_result = calculate_withholding_and_refund(profile, pe_result)
         se_detail = calculate_se_tax_detail(profile)
+
+        # Inject our SE tax into pe_result if PE didn't compute it
+        if pe_result.get("self_employment_tax", 0) == 0 and se_detail["total_se_tax"] > 0:
+            pe_result["self_employment_tax"] = se_detail["total_se_tax"]
+
+        custom_result = calculate_withholding_and_refund(profile, pe_result)
         schedule_c = calculate_schedule_c_detail(profile)
         rates = calculate_effective_rates(profile, pe_result, custom_result)
 
