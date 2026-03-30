@@ -73,17 +73,51 @@ def run_interview(
             console.print("\n[dim]Saving progress and exiting...[/dim]")
             break
 
-        if not user_input:
-            continue
+        # Handle document upload step specially
+        if engine.current_step_id == "document_upload":
+            # Empty input (just Enter) = done uploading, show review
+            if not user_input or user_input.lower().strip() == "done":
+                docs = engine._get_document_summary()
+                if "No documents uploaded" in docs:
+                    console.print()
+                    console.print("[dim]No documents uploaded. Moving to manual entry...[/dim]")
+                else:
+                    # Show summary and ask for approval
+                    console.print()
+                    console.print(Panel(docs, title="Documents Uploaded", border_style="blue"))
+                    console.print()
+                    confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip().lower()
+                    if confirm in ("no", "n"):
+                        console.print("[dim]You can upload corrected documents or type /skip to enter manually.[/dim]")
+                        continue
+                    if _looks_like_file_path(confirm):
+                        _handle_document_upload(engine, confirm)
+                        continue
+                    if confirm not in ("yes", "y", ""):
+                        # They might be uploading another file
+                        if _looks_like_file_path(confirm):
+                            _handle_document_upload(engine, confirm)
+                            continue
 
-        # Handle document upload — check BEFORE slash commands since file paths start with /
-        if engine.current_step_id == "document_upload" and user_input.lower().strip() != "done":
-            # Don't treat short slash commands as file paths
+                # Move to next step
+                from ai_tax_prep.core.interview_steps import get_next_step
+                next_id = get_next_step("document_upload", engine.profile)
+                if next_id:
+                    engine.current_step_id = next_id
+                    engine._update_session_step(next_id)
+                    _display_step_message(engine)
+                continue
+
+            # Check if it's a slash command
             first_word = user_input.split()[0] if user_input.split() else user_input
             is_slash_cmd = first_word.lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit")
             if not is_slash_cmd and _looks_like_file_path(first_word):
                 _handle_multi_upload(engine, user_input)
                 continue
+            # Fall through to slash command handling
+
+        if not user_input:
+            continue
 
         # Handle slash commands
         if user_input.startswith("/") and user_input.split()[0].lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit"):
@@ -312,4 +346,4 @@ def _handle_document_upload(engine: InterviewEngine, file_path: str):
     if result["needs_review"]:
         console.print("[yellow]Low confidence — please verify the numbers above.[/yellow]")
 
-    console.print("[dim]Upload another document or type 'done' to continue.[/dim]")
+    console.print("[dim]Paste another file path, or press Enter when done.[/dim]")

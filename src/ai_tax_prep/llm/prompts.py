@@ -92,12 +92,14 @@ Explain that they can upload:
 - 1099-DIV (dividend income from investments)
 - 1099-B (stock/crypto sales)
 - 1099-R (retirement distributions)
+- 1098-E (student loan interest)
+- Any other tax documents (PDFs or images)
 
-Tell them to type the file path to each document (e.g., ~/Documents/w2.png) \
-and we'll automatically extract all the data. They can upload multiple documents one at a time.
+Tell them to paste the file path for each document, one at a time. \
+We'll automatically extract all the data from each one.
 
-When they're done uploading, they can type "done" to continue.
-If they don't have documents handy, they can type /skip to enter information manually instead.
+When they're done uploading, just press Enter to review what was extracted.
+If they don't have documents handy, type /skip to enter information manually.
 
 Keep it brief and friendly.
 """,
