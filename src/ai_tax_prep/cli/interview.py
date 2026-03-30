@@ -73,51 +73,26 @@ def run_interview(
             console.print("\n[dim]Saving progress and exiting...[/dim]")
             break
 
-        # Handle document upload step specially
-        if engine.current_step_id == "document_upload":
-            # Empty input (just Enter) = done uploading, show review
-            if not user_input or user_input.lower().strip() == "done":
-                docs = engine._get_document_summary()
-                if "No documents uploaded" in docs:
-                    console.print()
-                    console.print("[dim]No documents uploaded. Moving to manual entry...[/dim]")
-                else:
-                    # Show summary and ask for approval
-                    console.print()
-                    console.print(Panel(docs, title="Documents Uploaded", border_style="blue"))
-                    console.print()
-                    confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip().lower()
-                    if confirm in ("no", "n"):
-                        console.print("[dim]You can upload corrected documents or type /skip to enter manually.[/dim]")
-                        continue
-                    if _looks_like_file_path(confirm):
-                        _handle_document_upload(engine, confirm)
-                        continue
-                    if confirm not in ("yes", "y", ""):
-                        # They might be uploading another file
-                        if _looks_like_file_path(confirm):
-                            _handle_document_upload(engine, confirm)
-                            continue
+        if not user_input:
+            # Empty input during document_upload = done uploading
+            if engine.current_step_id in ("document_upload", "document_review", "income_gaps"):
+                _finish_document_upload(engine)
+            continue
 
-                # Move to next step
-                from ai_tax_prep.core.interview_steps import get_next_step
-                next_id = get_next_step("document_upload", engine.profile)
-                if next_id:
-                    engine.current_step_id = next_id
-                    engine._update_session_step(next_id)
-                    _display_step_message(engine)
-                continue
-
-            # Check if it's a slash command
-            first_word = user_input.split()[0] if user_input.split() else user_input
+        # Check for file paths on ANY income-related step (not just document_upload)
+        # This handles cases where the step already advanced but user still has documents
+        income_steps = ("document_upload", "document_review", "income_gaps",
+                        "income_sources", "w2_income", "w2_more",
+                        "self_employment_income", "interest_income", "dividend_income",
+                        "capital_gains_income", "retirement_income", "rental_income",
+                        "other_income")
+        if engine.current_step_id in income_steps:
+            cleaned = user_input.replace("\\ ", " ")
+            first_word = cleaned.split()[0] if cleaned.split() else cleaned
             is_slash_cmd = first_word.lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit")
-            if not is_slash_cmd and _looks_like_file_path(first_word):
+            if not is_slash_cmd and not cleaned.lower() == "done" and _looks_like_file_path(first_word):
                 _handle_multi_upload(engine, user_input)
                 continue
-            # Fall through to slash command handling
-
-        if not user_input:
-            continue
 
         # Handle slash commands
         if user_input.startswith("/") and user_input.split()[0].lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit"):
@@ -248,40 +223,75 @@ def _handle_multi_upload(engine: InterviewEngine, raw_input: str):
     if raw.lower().endswith(" done"):
         raw = raw[:-5].strip()
 
-    # Strategy: split by common PDF/image extensions to find file boundaries
-    # This handles paths with spaces (common in macOS)
-    file_extensions = r'\.(pdf|png|jpg|jpeg|tiff|bmp|gif|webp)'
-    parts = re.split(f'({file_extensions})\\s+(?=/|~)', raw, flags=re.IGNORECASE)
+    # Replace backslash-escaped spaces with regular spaces
+    raw = raw.replace("\\ ", " ")
 
-    # Reconstruct file paths
+    # Split by file extension followed by whitespace and then / or ~
+    # This finds boundaries between multiple file paths
+    parts = re.split(r'(\.\w{3,4})\s+(?=[/~])', raw)
+
+    # Reconstruct file paths from parts
     paths = []
-    i = 0
-    while i < len(parts):
-        chunk = parts[i]
-        # Check if next part is an extension
-        if i + 1 < len(parts) and re.match(file_extensions, parts[i + 1], re.IGNORECASE):
-            paths.append(chunk + parts[i + 1])
-            i += 2
-        else:
-            if chunk.strip():
-                paths.append(chunk)
-            i += 1
+    current = ""
+    for part in parts:
+        current += part
+        if re.match(r'\.\w{3,4}$', part):
+            paths.append(current.strip())
+            current = ""
+    if current.strip():
+        paths.append(current.strip())
 
-    # If splitting didn't work well, try as a single path
-    if not paths or (len(paths) == 1 and paths[0] == raw):
-        # Try single path — remove backslash escapes
-        single_path = raw.replace("\\ ", " ")
-        _handle_document_upload(engine, single_path)
-        return
+    # Filter to actual existing files, fall back to single path
+    valid_paths = []
+    for p in paths:
+        if Path(p).expanduser().exists():
+            valid_paths.append(p)
+
+    if not valid_paths:
+        # Try the whole thing as one path
+        single = raw.strip()
+        if Path(single).expanduser().exists():
+            valid_paths = [single]
+        else:
+            console.print(f"[red]File not found:[/red] {single}")
+            console.print("[dim]Paste the full file path, or press Enter to skip.[/dim]")
+            return
 
     # Upload each file
-    for file_path in paths:
-        file_path = file_path.strip().replace("\\ ", " ")
-        if file_path:
-            _handle_document_upload(engine, file_path)
+    for file_path in valid_paths:
+        _handle_document_upload(engine, file_path)
 
-    console.print()
-    console.print(f"[dim]Uploaded {len(paths)} document(s). Upload more or type 'done' to continue.[/dim]")
+    if len(valid_paths) > 1:
+        console.print()
+        console.print(f"[dim]Uploaded {len(valid_paths)} document(s). Paste another path, or press Enter when done.[/dim]")
+
+
+def _finish_document_upload(engine: InterviewEngine):
+    """Show document summary and advance past document steps."""
+    docs = engine._get_document_summary()
+    if "No documents uploaded" in docs:
+        console.print()
+        console.print("[dim]No documents uploaded. Moving to manual entry...[/dim]")
+    else:
+        console.print()
+        console.print(Panel(docs, title="Documents Uploaded", border_style="blue"))
+        console.print()
+        confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip().lower()
+        if confirm in ("no", "n"):
+            console.print("[dim]Paste corrected document paths or type /skip to enter manually.[/dim]")
+            return
+        if _looks_like_file_path(confirm.replace("\\ ", " ")):
+            _handle_document_upload(engine, confirm.replace("\\ ", " "))
+            return
+
+    # Advance to adjustments (skip document_review and income_gaps if we have docs)
+    from ai_tax_prep.core.interview_steps import get_step
+    target = "adjustments" if "No documents" not in docs else "income_sources"
+
+    # If we have document data, skip manual income entry
+    engine.current_step_id = target
+    engine._update_session_step(target)
+    _display_step_message(engine)
 
 
 def _looks_like_file_path(text: str) -> bool:
