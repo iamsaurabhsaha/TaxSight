@@ -226,44 +226,44 @@ def _handle_multi_upload(engine: InterviewEngine, raw_input: str):
     # Replace backslash-escaped spaces with regular spaces
     raw = raw.replace("\\ ", " ")
 
-    # Split by file extension followed by whitespace and then / or ~
-    # This finds boundaries between multiple file paths
-    parts = re.split(r'(\.\w{3,4})\s+(?=[/~])', raw)
+    # Insert a newline between files at extension boundaries:
+    # ".pdf /Users" becomes ".pdf\n/Users", ".png ~/Doc" becomes ".png\n~/Doc"
+    raw = re.sub(r'\.(pdf|png|jpg|jpeg|tiff|bmp|gif|webp)\s+(?=[/~])', r'.\1\n', raw, flags=re.IGNORECASE)
 
-    # Reconstruct file paths from parts
-    paths = []
-    current = ""
-    for part in parts:
-        current += part
-        if re.match(r'\.\w{3,4}$', part):
-            paths.append(current.strip())
-            current = ""
-    if current.strip():
-        paths.append(current.strip())
+    # Split by newlines to get individual paths
+    paths = [p.strip() for p in raw.split("\n") if p.strip()]
 
-    # Filter to actual existing files, fall back to single path
+    # Validate each path exists
     valid_paths = []
+    not_found = []
     for p in paths:
-        if Path(p).expanduser().exists():
-            valid_paths.append(p)
-
-    if not valid_paths:
-        # Try the whole thing as one path
-        single = raw.strip()
-        if Path(single).expanduser().exists():
-            valid_paths = [single]
+        expanded = Path(p).expanduser()
+        if expanded.exists():
+            valid_paths.append(str(expanded))
         else:
-            console.print(f"[red]File not found:[/red] {single}")
-            console.print("[dim]Paste the full file path, or press Enter to skip.[/dim]")
-            return
+            not_found.append(p)
+
+    if not valid_paths and not_found:
+        console.print(f"[red]File(s) not found:[/red]")
+        for nf in not_found[:3]:
+            console.print(f"  {nf}")
+        console.print("[dim]Check the path and try again, or press Enter to skip.[/dim]")
+        return
 
     # Upload each file
+    success_count = 0
     for file_path in valid_paths:
         _handle_document_upload(engine, file_path)
+        success_count += 1
 
-    if len(valid_paths) > 1:
+    if not_found:
         console.print()
-        console.print(f"[dim]Uploaded {len(valid_paths)} document(s). Paste another path, or press Enter when done.[/dim]")
+        console.print(f"[yellow]Could not find {len(not_found)} file(s):[/yellow]")
+        for nf in not_found:
+            console.print(f"  [dim]{nf}[/dim]")
+
+    console.print()
+    console.print(f"[dim]Processed {success_count} document(s). Paste more paths, or press Enter when done.[/dim]")
 
 
 def _finish_document_upload(engine: InterviewEngine):
