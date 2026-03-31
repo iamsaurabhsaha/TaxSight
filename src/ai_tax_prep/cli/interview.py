@@ -264,7 +264,9 @@ def _handle_multi_upload(engine: InterviewEngine, raw_input: str):
             console.print(f"  [dim]{nf}[/dim]")
 
     console.print()
-    console.print(f"[dim]Processed {success_count} document(s). Paste more paths, or press Enter when done.[/dim]")
+    console.print(f"[green]Processed {success_count} document(s) successfully.[/green]")
+    console.print()
+    console.print("[bold]Paste more file paths to upload, or press Enter to review and calculate your taxes.[/bold]")
 
 
 def _run_auto_calculate(engine: InterviewEngine, session):
@@ -547,4 +549,4 @@ def _handle_document_upload(engine: InterviewEngine, file_path: str):
         if result["needs_review"]:
             console.print("[yellow]Low confidence — please verify the numbers above.[/yellow]")
 
-    console.print("[dim]Paste another file path, or press Enter when done.[/dim]")
+    console.print("[dim]Paste another file path, or press Enter to review & calculate.[/dim]")
