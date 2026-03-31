@@ -247,15 +247,20 @@ class InterviewEngine:
             parser = DocumentParser(self.session_id, self.llm)
             result = parser.parse_document(path)
 
-            # Auto-apply to profile
+            # Auto-apply to profile — track if it was actually applied
+            skipped = False
             if result.get("extracted_data"):
+                profile_before = self.profile.to_json()
                 self.profile = parser.apply_to_profile(
                     result["extracted_data"], result["doc_type"], self.profile
                 )
-                self._save_profile()
+                skipped = self.profile.to_json() == profile_before
+                if not skipped:
+                    self._save_profile()
 
             return {
                 "success": True,
+                "skipped": skipped,
                 "doc_type": result["doc_type"],
                 "extracted_data": result["extracted_data"],
                 "confidence": result["confidence"],

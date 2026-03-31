@@ -419,9 +419,12 @@ def _handle_document_upload(engine: InterviewEngine, file_path: str):
                     console.print(f"  {key}: {value}")
 
     console.print()
-    console.print("[green]Data applied to your profile.[/green]")
+    if result.get("skipped"):
+        console.print("[dim]Skipped — supplemental document (data already captured from primary form).[/dim]")
+    else:
+        console.print("[green]Data applied to your profile.[/green]")
 
-    if result["needs_review"]:
-        console.print("[yellow]Low confidence — please verify the numbers above.[/yellow]")
+        if result["needs_review"]:
+            console.print("[yellow]Low confidence — please verify the numbers above.[/yellow]")
 
     console.print("[dim]Paste another file path, or press Enter when done.[/dim]")
