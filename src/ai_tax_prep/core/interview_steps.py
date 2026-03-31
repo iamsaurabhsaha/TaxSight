@@ -162,8 +162,8 @@ _register(InterviewStep(
     id="personal_info",
     category="basics",
     title="Personal Information",
-    description="Collect basic personal info: name, age, state of residence.",
-    required_fields=["first_name", "last_name", "age", "state_of_residence"],
+    description="Collect only what's needed: state of residence and whether 65+.",
+    required_fields=["state_of_residence", "is_65_or_older"],
     next_step="dependents",
 ))
 

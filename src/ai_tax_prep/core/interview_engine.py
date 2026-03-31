@@ -150,9 +150,8 @@ class InterviewEngine:
         p = self.profile
         lines = []
 
-        lines.append(f"Name: {p.personal_info.first_name} {p.personal_info.last_name}")
-        lines.append(f"Age: {p.personal_info.age}")
         lines.append(f"Filing Status: {p.personal_info.filing_status}")
+        lines.append(f"Age 65+: {'Yes' if p.personal_info.age >= 65 else 'No'}")
         lines.append(f"State: {p.personal_info.state_of_residence}")
         lines.append(f"Dependents: {len(p.personal_info.dependents)}")
 
@@ -460,14 +459,13 @@ class InterviewEngine:
                 self.profile.personal_info.filing_status = status.lower().strip()
 
         elif step_id == "personal_info":
-            if data.get("first_name"):
-                self.profile.personal_info.first_name = data["first_name"]
-            if data.get("last_name"):
-                self.profile.personal_info.last_name = data["last_name"]
-            if data.get("age"):
-                self.profile.personal_info.age = int(data["age"])
             if data.get("state_of_residence"):
                 self.profile.personal_info.state_of_residence = data["state_of_residence"].upper().strip()
+            if data.get("is_65_or_older") is not None:
+                is_65 = data["is_65_or_older"]
+                if isinstance(is_65, str):
+                    is_65 = is_65.lower() in ("true", "yes", "y")
+                self.profile.personal_info.age = 66 if is_65 else 35
 
         elif step_id == "dependents":
             dependents = data.get("dependents", [])

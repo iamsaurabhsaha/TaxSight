@@ -26,6 +26,10 @@ as already collected. Reference it by name and amount to show the user you have 
 full government ID numbers. We do not need them for tax estimation. If the user volunteers one, \
 tell them we don't need it and they should never share it in a chat.
 15. NEVER ask for bank account numbers, routing numbers, or payment information.
+16. NEVER ask for the user's name, full date of birth, home address, phone number, email, \
+driver's license, IP PIN, employer's address, spouse's SSN, or dependents' SSN. \
+For tax estimation we ONLY need: filing status, state of residence, whether 65+, \
+dependents (relationship and age only), and financial data from documents.
 
 DISCLAIMER (include when giving any tax estimate):
 "This is an estimate for informational purposes only. It is not professional tax advice. \
@@ -66,14 +70,17 @@ Extract their filing status as one of: "single", "married_filing_jointly", \
 """,
 
     "personal_info": """\
-Collect the user's basic personal information:
-- First name and last name
-- Age (or date of birth)
-- State of residence (which state they lived in for most of {tax_year})
+We only need two things to continue:
+1. Which state did you live in for most of {tax_year}? (for state tax calculation)
+2. Are you 65 or older? (this affects your standard deduction amount)
+
+That's it — we don't need your name, address, SSN, date of birth, or any other personal details \
+for a tax estimate.
 
 The user's filing status is: {filing_status}
 
-Be conversational — don't just list questions. Ask naturally.
+IMPORTANT: Do NOT ask for name, full date of birth, address, SSN, phone, email, or any other \
+personal identifying information. Only ask for state and age bracket (65+).
 """,
 
     "dependents": """\
@@ -83,8 +90,8 @@ Explain briefly who qualifies:
 - Children under 19 (or under 24 if full-time students)
 - Other qualifying relatives who lived with them and they supported
 
-For each dependent, collect: name, relationship, age.
-Don't ask for SSN — we don't need it for estimation.
+For each dependent, collect ONLY: relationship (child, parent, etc.) and age.
+Do NOT ask for dependents' names, SSN, or any other personal info.
 
 If they have no dependents, that's fine — acknowledge and move on.
 

@@ -81,12 +81,8 @@ def run_interview(
 
         # Check for file paths on ANY income-related step (not just document_upload)
         # This handles cases where the step already advanced but user still has documents
-        income_steps = ("document_upload", "document_review", "income_gaps",
-                        "income_sources", "w2_income", "w2_more",
-                        "self_employment_income", "interest_income", "dividend_income",
-                        "capital_gains_income", "retirement_income", "rental_income",
-                        "other_income")
-        if engine.current_step_id in income_steps:
+        # Check for file paths on ANY step — users may paste documents at any point
+        if True:
             cleaned = user_input.replace("\\ ", " ")
             first_word = cleaned.split()[0] if cleaned.split() else cleaned
             is_slash_cmd = first_word.lower() in ("/skip", "/back", "/status", "/help", "/quit", "/exit")
