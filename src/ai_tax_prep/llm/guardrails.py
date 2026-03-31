@@ -169,6 +169,15 @@ def sanitize_llm_output(text: str) -> str:
         except (json.JSONDecodeError, Exception):
             pass
 
+    # Block LLM from asking for SSN/TIN
+    import re as _re
+    if _re.search(r'(?i)(social\s+security\s+number|SSN|taxpayer\s+identification|TIN\b.*needed|need\s+your\s+SSN)', text):
+        text = _re.sub(
+            r'(?i)[^.]*(?:social\s+security|SSN|taxpayer\s+identification)[^.]*\.',
+            'We do not need your Social Security Number for this estimate.',
+            text,
+        )
+
     # Remove any accidental system prompt reveals
     lines = text.split("\n")
     sanitized_lines = []
