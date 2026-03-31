@@ -3,6 +3,45 @@
 from ai_tax_prep.core.tax_profile import TaxProfile
 
 
+def apply_adjustment_phaseouts(profile: TaxProfile, agi: float) -> dict:
+    """Apply income-based phaseouts to adjustments.
+
+    Returns dict of corrected adjustment amounts and any warnings.
+    """
+    corrections = {}
+    warnings = []
+
+    # Student loan interest deduction phaseout (2025)
+    # Single: phaseout starts at $85,000, fully phased out at $100,000
+    # MFJ: phaseout starts at $170,000, fully phased out at $200,000
+    sli = profile.adjustments.student_loan_interest
+    if sli > 0:
+        if profile.personal_info.filing_status == "married_filing_jointly":
+            phase_start, phase_end = 170_000, 200_000
+        else:
+            phase_start, phase_end = 85_000, 100_000
+
+        if agi >= phase_end:
+            corrections["student_loan_interest"] = 0
+            warnings.append(
+                f"Student loan interest deduction (${sli:,.2f}) is fully phased out "
+                f"because your AGI (${agi:,.0f}) exceeds ${phase_end:,}."
+            )
+        elif agi > phase_start:
+            # Partial phaseout
+            ratio = (agi - phase_start) / (phase_end - phase_start)
+            allowed = sli * (1 - ratio)
+            corrections["student_loan_interest"] = round(allowed, 2)
+            warnings.append(
+                f"Student loan interest deduction reduced from ${sli:,.2f} to "
+                f"${allowed:,.2f} due to income phaseout."
+            )
+        else:
+            corrections["student_loan_interest"] = min(sli, 2_500)  # Cap at $2,500
+
+    return {"corrections": corrections, "warnings": warnings}
+
+
 def calculate_withholding_and_refund(profile: TaxProfile, pe_result: dict) -> dict:
     """Calculate total withholding and refund/amount owed.
 

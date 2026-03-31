@@ -160,10 +160,15 @@ class DocumentParser:
     def apply_to_profile(self, extracted_data: dict, doc_type: str, profile: TaxProfile) -> TaxProfile:
         """Apply extracted document data to a tax profile."""
         if doc_type == "w2":
+            wages = _safe_float(extracted_data.get("wages", 0))
+            # Skip supplemental W-2s with $0 or near-zero Box 1 wages
+            # (e.g., NJ payroll tax W-2s that only have state/local info)
+            if wages < 1.0:
+                return profile
             w2 = W2Income(
                 employer_name=extracted_data.get("employer_name", ""),
                 employer_ein=extracted_data.get("employer_ein", ""),
-                wages=_safe_float(extracted_data.get("wages", 0)),
+                wages=wages,
                 federal_withholding=_safe_float(extracted_data.get("federal_withholding", 0)),
                 ss_wages=_safe_float(extracted_data.get("ss_wages", 0)),
                 ss_tax=_safe_float(extracted_data.get("ss_tax", 0)),
@@ -212,6 +217,29 @@ class DocumentParser:
             profile.income.capital_gains.append(cg)
 
         elif doc_type == "1099_r":
+            dist_code = str(extracted_data.get("distribution_code", "")).upper().strip()
+
+            # Code P = prior year distribution, skip for current tax year
+            if "P" in dist_code:
+                return profile
+
+            # Code J = Roth IRA early distribution
+            # Generally a return of contributions = $0 taxable
+            # Only taxable if earnings are distributed (needs Form 8606)
+            if "J" in dist_code:
+                taxable = _safe_float(extracted_data.get("taxable_amount", 0))
+                # If taxable_amount is 0 or same as gross, likely return of contributions
+                gross = _safe_float(extracted_data.get("gross_distribution", 0))
+                if taxable == 0 or taxable == gross:
+                    taxable = 0  # Assume return of contributions unless user specifies otherwise
+                ret = RetirementIncome(
+                    source=extracted_data.get("payer_name", ""),
+                    gross_distribution=gross,
+                    taxable_amount=taxable,
+                )
+                profile.income.retirement.append(ret)
+                return profile
+
             ret = RetirementIncome(
                 source=extracted_data.get("payer_name", ""),
                 gross_distribution=_safe_float(extracted_data.get("gross_distribution", 0)),

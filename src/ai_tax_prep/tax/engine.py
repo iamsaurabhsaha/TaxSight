@@ -99,7 +99,7 @@ class TaxEngine:
 
             # Engine info
             "engine_used": pe_result.get("engine", "unknown"),
-            "warnings": [],
+            "warnings": pe_result.get("phaseout_warnings", []),
         }
 
         # Add warnings
@@ -225,6 +225,8 @@ Mention the effective tax rate. End with the disclaimer that this is an estimate
 
     def _fallback_estimate(self, profile: TaxProfile) -> dict:
         """Simple fallback if PolicyEngine is unavailable."""
+        from ai_tax_prep.tax.custom_calcs import apply_adjustment_phaseouts
+
         total_income = (
             profile.income.total_wages()
             + profile.income.total_self_employment()
@@ -235,7 +237,7 @@ Mention the effective tax rate. End with the disclaimer that this is an estimate
             + profile.income.total_retirement()
         )
 
-        # Rough standard deduction
+        # Rough standard deduction (2025)
         standard_deductions = {
             "single": 15_000,
             "married_filing_jointly": 30_000,
@@ -245,11 +247,39 @@ Mention the effective tax rate. End with the disclaimer that this is an estimate
         }
         std_ded = standard_deductions.get(profile.personal_info.filing_status, 15_000)
 
-        agi = total_income - profile.adjustments.total()
+        # Compute preliminary AGI for phaseout calculations
+        preliminary_agi = total_income - profile.adjustments.total()
+
+        # Apply adjustment phaseouts (e.g., student loan interest)
+        phaseout_result = apply_adjustment_phaseouts(profile, preliminary_agi)
+        corrections = phaseout_result["corrections"]
+
+        # Recalculate AGI with corrected adjustments
+        corrected_adjustments = profile.adjustments.total()
+        if "student_loan_interest" in corrections:
+            corrected_adjustments -= profile.adjustments.student_loan_interest
+            corrected_adjustments += corrections["student_loan_interest"]
+
+        agi = total_income - corrected_adjustments
         taxable = max(0, agi - std_ded)
 
-        # Rough federal tax using 2025 brackets (single)
-        federal_tax = self._rough_federal_tax(taxable, profile.personal_info.filing_status)
+        # Separate qualified dividends for preferential tax rate
+        qualified_divs = profile.income.total_qualified_dividends()
+        ordinary_taxable = max(0, taxable - qualified_divs)
+
+        # Tax ordinary income at regular rates
+        ordinary_tax = self._rough_federal_tax(ordinary_taxable, profile.personal_info.filing_status)
+
+        # Tax qualified dividends at preferential rate (0%/15%/20%)
+        qualified_div_tax = self._qualified_dividend_tax(
+            qualified_divs, ordinary_taxable, profile.personal_info.filing_status
+        )
+
+        federal_tax = ordinary_tax + qualified_div_tax
+
+        # NJ state tax (use actual NJ brackets instead of flat 5%)
+        state = profile.personal_info.state_of_residence
+        state_tax = self._rough_state_tax(agi, state, profile.personal_info.filing_status)
 
         return {
             "engine": "fallback",
@@ -263,24 +293,44 @@ Mention the effective tax rate. End with the disclaimer that this is an estimate
             "eitc": 0,
             "child_tax_credit": len(profile.personal_info.dependents) * 2000,
             "self_employment_tax": 0,
-            "state_income_tax": agi * 0.05,  # Rough 5% state estimate
+            "state_income_tax": state_tax,
+            "phaseout_warnings": phaseout_result["warnings"],
         }
 
     def _rough_federal_tax(self, taxable_income: float, filing_status: str) -> float:
-        """Rough federal tax estimate using simplified brackets."""
-        # 2025 brackets (single)
-        brackets = [
-            (11_925, 0.10),
-            (48_475, 0.12),
-            (103_350, 0.22),
-            (197_300, 0.24),
-            (250_525, 0.32),
-            (626_350, 0.35),
-            (float("inf"), 0.37),
-        ]
-
+        """Federal tax estimate using 2025 tax brackets."""
         if filing_status == "married_filing_jointly":
-            brackets = [(b * 2, r) for b, r in brackets]
+            # 2025 MFJ brackets (actual IRS values)
+            brackets = [
+                (23_850, 0.10),
+                (96_950, 0.12),
+                (206_700, 0.22),
+                (394_600, 0.24),
+                (501_050, 0.32),
+                (751_600, 0.35),
+                (float("inf"), 0.37),
+            ]
+        elif filing_status == "head_of_household":
+            brackets = [
+                (17_000, 0.10),
+                (64_850, 0.12),
+                (103_350, 0.22),
+                (197_300, 0.24),
+                (250_500, 0.32),
+                (626_350, 0.35),
+                (float("inf"), 0.37),
+            ]
+        else:
+            # Single / MFS brackets (2025)
+            brackets = [
+                (11_925, 0.10),
+                (48_475, 0.12),
+                (103_350, 0.22),
+                (197_300, 0.24),
+                (250_525, 0.32),
+                (626_350, 0.35),
+                (float("inf"), 0.37),
+            ]
 
         tax = 0
         prev = 0
@@ -292,6 +342,114 @@ Mention the effective tax rate. End with the disclaimer that this is an estimate
             prev = limit
 
         return tax
+
+    def _qualified_dividend_tax(
+        self, qualified_divs: float, ordinary_taxable: float, filing_status: str
+    ) -> float:
+        """Calculate tax on qualified dividends at preferential rates (0%/15%/20%)."""
+        if qualified_divs <= 0:
+            return 0
+
+        # 2025 thresholds for 0%/15%/20% qualified dividend rates
+        if filing_status == "married_filing_jointly":
+            zero_pct_limit = 96_700
+            fifteen_pct_limit = 600_050
+        else:  # single
+            zero_pct_limit = 48_350
+            fifteen_pct_limit = 533_400
+
+        # The rate depends on where the dividends fall in the tax bracket stack
+        total_taxable = ordinary_taxable + qualified_divs
+
+        if total_taxable <= zero_pct_limit:
+            return 0
+        elif ordinary_taxable >= fifteen_pct_limit:
+            return qualified_divs * 0.20
+        elif ordinary_taxable >= zero_pct_limit:
+            # All qualified divs at 15% (or 20% if above threshold)
+            in_15_band = min(qualified_divs, fifteen_pct_limit - ordinary_taxable)
+            in_20_band = max(0, qualified_divs - in_15_band)
+            return in_15_band * 0.15 + in_20_band * 0.20
+        else:
+            # Some at 0%, rest at 15%
+            in_zero_band = min(qualified_divs, zero_pct_limit - ordinary_taxable)
+            remaining = qualified_divs - in_zero_band
+            in_15_band = min(remaining, fifteen_pct_limit - zero_pct_limit)
+            in_20_band = max(0, remaining - in_15_band)
+            return in_15_band * 0.15 + in_20_band * 0.20
+
+    def _rough_state_tax(self, agi: float, state: str, filing_status: str) -> float:
+        """Calculate rough state income tax. Uses actual brackets for common states."""
+        if state in ("FL", "TX", "NV", "WA", "WY", "SD", "TN", "AK", "NH"):
+            return 0  # No state income tax
+
+        # NJ brackets (2025, single/MFJ)
+        if state == "NJ":
+            nj_brackets = [
+                (20_000, 0.014),
+                (35_000, 0.0175),
+                (40_000, 0.035),
+                (75_000, 0.05525),
+                (500_000, 0.0637),
+                (1_000_000, 0.0897),
+                (float("inf"), 0.1075),
+            ]
+            tax = 0
+            prev = 0
+            for limit, rate in nj_brackets:
+                if agi <= prev:
+                    break
+                taxable_in_bracket = min(agi, limit) - prev
+                tax += taxable_in_bracket * rate
+                prev = limit
+            return tax
+
+        # NY brackets (simplified, single)
+        if state == "NY":
+            ny_brackets = [
+                (8_500, 0.04),
+                (11_700, 0.045),
+                (13_900, 0.0525),
+                (80_650, 0.0585),
+                (215_400, 0.0625),
+                (1_077_550, 0.0685),
+                (float("inf"), 0.0882),
+            ]
+            tax = 0
+            prev = 0
+            for limit, rate in ny_brackets:
+                if agi <= prev:
+                    break
+                taxable_in_bracket = min(agi, limit) - prev
+                tax += taxable_in_bracket * rate
+                prev = limit
+            return tax
+
+        # CA brackets (simplified, single)
+        if state == "CA":
+            ca_brackets = [
+                (10_412, 0.01),
+                (24_684, 0.02),
+                (38_959, 0.04),
+                (54_081, 0.06),
+                (68_350, 0.08),
+                (349_137, 0.093),
+                (418_961, 0.103),
+                (698_271, 0.113),
+                (float("inf"), 0.123),
+            ]
+            tax = 0
+            prev = 0
+            for limit, rate in ca_brackets:
+                if agi <= prev:
+                    break
+                taxable_in_bracket = min(agi, limit) - prev
+                tax += taxable_in_bracket * rate
+                prev = limit
+            return tax
+
+        # Default: rough 5% for other states
+        return agi * 0.05
 
     def _save_result(self, profile: TaxProfile, result: dict):
         """Save calculation result to database."""
