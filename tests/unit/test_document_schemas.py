@@ -65,7 +65,7 @@ class TestForm1099B:
 
 class TestDocTypeRegistries:
     def test_schemas_complete(self):
-        expected = {"w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r"}
+        expected = {"w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "1098_e"}
         assert set(DOC_TYPE_SCHEMAS.keys()) == expected
 
     def test_names_complete(self):

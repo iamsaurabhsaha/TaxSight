@@ -276,13 +276,18 @@ def _finish_document_upload(engine: InterviewEngine):
         console.print()
         console.print(Panel(docs, title="Documents Uploaded", border_style="blue"))
         console.print()
-        confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip().lower()
-        if confirm in ("no", "n"):
+        confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip()
+        confirm_lower = confirm.lower()
+        if confirm_lower in ("no", "n"):
             console.print("[dim]Paste corrected document paths or type /skip to enter manually.[/dim]")
             return
         if _looks_like_file_path(confirm.replace("\\ ", " ")):
             _handle_document_upload(engine, confirm.replace("\\ ", " "))
             return
+        if confirm_lower not in ("yes", "y", ""):
+            # User typed a correction or comment — save it so LLM sees it in context
+            engine._save_message("user", confirm)
+            console.print("[dim]Noted. I'll take that into account.[/dim]")
 
     # Advance to adjustments (skip document_review and income_gaps if we have docs)
     from ai_tax_prep.core.interview_steps import get_step

@@ -44,7 +44,7 @@ CLASSIFY_PROMPT = """\
 Look at this tax document and identify what type of document it is.
 
 Return a JSON object with:
-- "doc_type": one of: "w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "other"
+- "doc_type": one of: "w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "1098_e", "other"
 - "confidence": a number from 0.0 to 1.0 indicating how confident you are
 
 Return valid JSON only.
@@ -54,7 +54,7 @@ CLASSIFY_TEXT_PROMPT = """\
 Analyze this tax document text and identify what type of document it is.
 
 Return a JSON object with:
-- "doc_type": one of: "w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "other"
+- "doc_type": one of: "w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "1098_e", "other"
 - "confidence": a number from 0.0 to 1.0 indicating how confident you are
 
 Return valid JSON only.
@@ -281,6 +281,8 @@ def _classify_from_filename(file_path: Path) -> dict:
         return {"doc_type": "1099_r", "confidence": 0.7}
     if "1099" in name:
         return {"doc_type": "1099_nec", "confidence": 0.4}
+    if "1098" in name and ("e" in name.lower().split("1098")[-1][:3]):
+        return {"doc_type": "1098_e", "confidence": 0.7}
     if "1098" in name:
         return {"doc_type": "other", "confidence": 0.5}
     return {"doc_type": "other", "confidence": 0.3}

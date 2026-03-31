@@ -63,6 +63,12 @@ class Form1099R(BaseModel):
     distribution_code: str = Field("", description="Box 7: Distribution code")
 
 
+class Form1098E(BaseModel):
+    lender_name: str = ""
+    borrower_name: str = ""
+    student_loan_interest: float = Field(0.0, description="Box 1: Student loan interest received by lender")
+
+
 DOC_TYPE_SCHEMAS = {
     "w2": W2Data,
     "1099_nec": Form1099NEC,
@@ -70,6 +76,7 @@ DOC_TYPE_SCHEMAS = {
     "1099_div": Form1099DIV,
     "1099_b": Form1099B,
     "1099_r": Form1099R,
+    "1098_e": Form1098E,
 }
 
 
@@ -80,4 +87,5 @@ DOC_TYPE_NAMES = {
     "1099_div": "1099-DIV (Dividends and Distributions)",
     "1099_b": "1099-B (Proceeds from Broker Transactions)",
     "1099_r": "1099-R (Retirement Distributions)",
+    "1098_e": "1098-E (Student Loan Interest)",
 }

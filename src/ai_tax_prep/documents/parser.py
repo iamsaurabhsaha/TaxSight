@@ -19,6 +19,21 @@ from ai_tax_prep.documents.vision import classify_document, extract_with_vision
 from ai_tax_prep.llm.client import LLMClient
 
 
+def _safe_float(value) -> float:
+    """Safely convert a value to float, returning 0.0 for empty/invalid values."""
+    if value is None or value == "" or value == "N/A" or value == "n/a":
+        return 0.0
+    try:
+        # Handle strings like "$1,234.56"
+        if isinstance(value, str):
+            value = value.replace("$", "").replace(",", "").strip()
+            if not value:
+                return 0.0
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 class DocumentParser:
     """Orchestrates document parsing: OCR + vision → validate → store → apply to profile."""
 
@@ -148,15 +163,15 @@ class DocumentParser:
             w2 = W2Income(
                 employer_name=extracted_data.get("employer_name", ""),
                 employer_ein=extracted_data.get("employer_ein", ""),
-                wages=float(extracted_data.get("wages", 0)),
-                federal_withholding=float(extracted_data.get("federal_withholding", 0)),
-                ss_wages=float(extracted_data.get("ss_wages", 0)),
-                ss_tax=float(extracted_data.get("ss_tax", 0)),
-                medicare_wages=float(extracted_data.get("medicare_wages", 0)),
-                medicare_tax=float(extracted_data.get("medicare_tax", 0)),
+                wages=_safe_float(extracted_data.get("wages", 0)),
+                federal_withholding=_safe_float(extracted_data.get("federal_withholding", 0)),
+                ss_wages=_safe_float(extracted_data.get("ss_wages", 0)),
+                ss_tax=_safe_float(extracted_data.get("ss_tax", 0)),
+                medicare_wages=_safe_float(extracted_data.get("medicare_wages", 0)),
+                medicare_tax=_safe_float(extracted_data.get("medicare_tax", 0)),
                 state=extracted_data.get("state", ""),
-                state_wages=float(extracted_data.get("state_wages", 0)),
-                state_withholding=float(extracted_data.get("state_tax", extracted_data.get("state_withholding", 0))),
+                state_wages=_safe_float(extracted_data.get("state_wages", 0)),
+                state_withholding=_safe_float(extracted_data.get("state_tax", extracted_data.get("state_withholding", 0))),
             )
             profile.income.w2s.append(w2)
             profile.payments.federal_withholding = profile.income.total_federal_withholding()
@@ -165,23 +180,23 @@ class DocumentParser:
         elif doc_type == "1099_nec":
             se = SelfEmploymentIncome(
                 business_name=extracted_data.get("payer_name", ""),
-                gross_income=float(extracted_data.get("nonemployee_compensation", 0)),
+                gross_income=_safe_float(extracted_data.get("nonemployee_compensation", 0)),
             )
             profile.income.self_employment.append(se)
 
         elif doc_type == "1099_int":
             interest = InterestIncome(
                 payer_name=extracted_data.get("payer_name", ""),
-                amount=float(extracted_data.get("interest_income", 0)),
-                is_tax_exempt=float(extracted_data.get("tax_exempt_interest", 0)) > 0,
+                amount=_safe_float(extracted_data.get("interest_income", 0)),
+                is_tax_exempt=_safe_float(extracted_data.get("tax_exempt_interest", 0)) > 0,
             )
             profile.income.interest.append(interest)
 
         elif doc_type == "1099_div":
             div = DividendIncome(
                 payer_name=extracted_data.get("payer_name", ""),
-                ordinary_dividends=float(extracted_data.get("ordinary_dividends", 0)),
-                qualified_dividends=float(extracted_data.get("qualified_dividends", 0)),
+                ordinary_dividends=_safe_float(extracted_data.get("ordinary_dividends", 0)),
+                qualified_dividends=_safe_float(extracted_data.get("qualified_dividends", 0)),
             )
             profile.income.dividends.append(div)
 
@@ -190,8 +205,8 @@ class DocumentParser:
                 description=extracted_data.get("description", ""),
                 date_acquired=extracted_data.get("date_acquired", ""),
                 date_sold=extracted_data.get("date_sold", ""),
-                proceeds=float(extracted_data.get("proceeds", 0)),
-                cost_basis=float(extracted_data.get("cost_basis", 0)),
+                proceeds=_safe_float(extracted_data.get("proceeds", 0)),
+                cost_basis=_safe_float(extracted_data.get("cost_basis", 0)),
                 is_long_term=bool(extracted_data.get("is_long_term", False)),
             )
             profile.income.capital_gains.append(cg)
@@ -199,10 +214,17 @@ class DocumentParser:
         elif doc_type == "1099_r":
             ret = RetirementIncome(
                 source=extracted_data.get("payer_name", ""),
-                gross_distribution=float(extracted_data.get("gross_distribution", 0)),
-                taxable_amount=float(extracted_data.get("taxable_amount", 0)),
+                gross_distribution=_safe_float(extracted_data.get("gross_distribution", 0)),
+                taxable_amount=_safe_float(extracted_data.get("taxable_amount", 0)),
             )
             profile.income.retirement.append(ret)
+
+        elif doc_type == "1098_e":
+            interest_amount = _safe_float(
+                extracted_data.get("student_loan_interest", extracted_data.get("student_loan_interest_received", 0))
+            )
+            if interest_amount > 0:
+                profile.adjustments.student_loan_interest = interest_amount
 
         return profile
 

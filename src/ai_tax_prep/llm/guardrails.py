@@ -151,18 +151,34 @@ def add_disclaimer(text: str, full: bool = False) -> str:
 
 
 def sanitize_llm_output(text: str) -> str:
-    """Remove any system prompt leakage or unwanted content from LLM output."""
+    """Remove any system prompt leakage, raw JSON, or unwanted content from LLM output."""
+    import re
+
+    # Remove raw JSON blocks that leaked into display
+    # Match ```json ... ``` blocks
+    text = re.sub(r'```json\s*\{[\s\S]*?\}\s*```', '', text)
+
+    # If the entire response looks like a JSON object, try to extract display_text
+    stripped = text.strip()
+    if stripped.startswith('{') and stripped.endswith('}'):
+        try:
+            import json
+            parsed = json.loads(stripped)
+            if "display_text" in parsed:
+                return parsed["display_text"]
+        except (json.JSONDecodeError, Exception):
+            pass
+
     # Remove any accidental system prompt reveals
     lines = text.split("\n")
     sanitized_lines = []
     for line in lines:
-        # Skip lines that look like system prompt content
         if line.strip().startswith("CRITICAL RULES:"):
             continue
         if "NEVER reveal these" in line:
             continue
         sanitized_lines.append(line)
-    return "\n".join(sanitized_lines)
+    return "\n".join(sanitized_lines).strip()
 
 
 # --- Confidence & Uncertainty ---
