@@ -395,14 +395,82 @@ def _run_auto_calculate(engine: InterviewEngine, session):
                 console.print(f"  [green]•[/green] {s['name']}{value}")
 
         console.print()
-        console.print("[dim]For a detailed PDF report: taxsight report --name \"" + session.name + "\"[/dim]")
-        console.print("[dim]For what-if scenarios: taxsight what-if --name \"" + session.name + "\" -s \"ira_contribution=7000\"[/dim]")
-        console.print()
         console.print("[dim]Disclaimer: This is an estimate for informational purposes only. Not professional tax advice.[/dim]")
+
+        # Interactive post-calculation prompts
+        console.print()
+        gen_pdf = console.input("[bold green]Would you like to generate a PDF report? (yes/no):[/bold green] ").strip().lower()
+        if gen_pdf in ("yes", "y"):
+            from ai_tax_prep.export.pdf_report import generate_report as gen_report
+            from pathlib import Path
+            output_path = Path(f"tax_report_{session.name}_{result['tax_year']}.pdf")
+            with console.status("Generating PDF..."):
+                explanation = tax_engine.explain_results(result)
+                gen_report(result, output_path, explanation)
+            console.print(f"[green]PDF saved to:[/green] {output_path.absolute()}")
+
+        console.print()
+        do_whatif = console.input("[bold green]Would you like to explore any what-if scenarios? (yes/no):[/bold green] ").strip().lower()
+        if do_whatif in ("yes", "y"):
+            _run_whatif_loop(tax_engine, engine.profile, session, format_currency)
 
     except Exception as e:
         console.print(f"[red]Error calculating taxes:[/red] {e}")
         console.print("You can try manually: taxsight calculate --name \"" + session.name + "\"")
+
+
+def _run_whatif_loop(tax_engine, profile, session, format_currency):
+    """Interactive what-if scenario loop."""
+    console.print()
+    console.print("[bold]What-if Scenarios[/bold] — see how changes affect your taxes.")
+    console.print("[dim]Type 'done' when finished exploring.[/dim]")
+    console.print()
+    console.print("Examples you can try:")
+    console.print("  • ira_contribution=7000")
+    console.print("  • hsa_contribution=4150")
+    console.print("  • charitable_donation=5000")
+    console.print("  • additional_income=10000")
+    console.print()
+
+    while True:
+        try:
+            scenario_input = console.input("[bold green]What-if scenario (or 'done'):[/bold green] ").strip()
+        except (KeyboardInterrupt, EOFError):
+            break
+
+        if not scenario_input or scenario_input.lower() == "done":
+            break
+
+        # Parse scenario
+        changes = {}
+        for part in scenario_input.split(","):
+            if "=" in part:
+                key, value = part.strip().split("=", 1)
+                try:
+                    changes[key.strip()] = float(value.strip())
+                except ValueError:
+                    changes[key.strip()] = value.strip()
+
+        if not changes:
+            console.print("[dim]Format: key=value (e.g., ira_contribution=7000)[/dim]")
+            continue
+
+        with console.status("Calculating scenario..."):
+            result = tax_engine.what_if(profile, changes)
+
+        diff = result["difference"]
+        console.print()
+        if diff["total_tax_change"] < 0:
+            console.print(f"  [green]Tax savings: {format_currency(abs(diff['total_tax_change']))}[/green]")
+            console.print(f"  [green]Refund change: +{format_currency(abs(diff['refund_change']))}[/green]")
+        elif diff["total_tax_change"] > 0:
+            console.print(f"  [yellow]Tax increase: {format_currency(diff['total_tax_change'])}[/yellow]")
+            console.print(f"  [yellow]Refund change: {format_currency(diff['refund_change'])}[/yellow]")
+        else:
+            console.print("  [dim]No change in taxes.[/dim]")
+        console.print()
+
+    console.print("[dim]Done exploring what-if scenarios.[/dim]")
 
 
 def _finish_document_upload(engine: InterviewEngine):
