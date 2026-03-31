@@ -135,6 +135,14 @@ class InterviewEngine:
     def _build_prompt_kwargs(self) -> dict:
         """Build template variables for step prompts."""
         summary = self.profile.summary()
+        from ai_tax_prep.config.settings import get_settings
+        settings = get_settings()
+        provider = settings.llm_provider
+        if provider == "ollama":
+            privacy_note = "Ollama (fully local — no data leaves your device)"
+        else:
+            privacy_note = f"{provider} API (document text is sent for parsing)"
+
         return {
             "tax_year": self.tax_year,
             "filing_status": self.profile.personal_info.filing_status or "not yet determined",
@@ -143,6 +151,7 @@ class InterviewEngine:
             "total_federal_withholding": f"{self.profile.income.total_federal_withholding():,.2f}",
             "total_state_withholding": f"{self.profile.income.total_state_withholding():,.2f}",
             "document_summary": self._get_document_summary(),
+            "llm_provider": privacy_note,
         }
 
     def _get_rich_profile_summary(self) -> str:

@@ -42,10 +42,10 @@ class TestStepRegistry:
 
 
 class TestStepRouting:
-    def test_welcome_goes_to_filing_status(self):
+    def test_welcome_goes_to_personal_info(self):
         profile = TaxProfile()
         next_id = get_next_step("welcome", profile)
-        assert next_id == "filing_status"
+        assert next_id == "personal_info"
 
     def test_filing_status_goes_to_personal_info(self):
         profile = TaxProfile()

@@ -144,16 +144,17 @@ def _register(step: InterviewStep) -> InterviewStep:
 _register(InterviewStep(
     id="welcome",
     category="basics",
-    title="Welcome",
-    description="Welcome the user and explain what we'll do together.",
-    next_step="filing_status",
+    title="Welcome & Filing Status",
+    description="Welcome the user and ask filing status in one step.",
+    required_fields=["filing_status"],
+    next_step="personal_info",
 ))
 
 _register(InterviewStep(
     id="filing_status",
     category="basics",
     title="Filing Status",
-    description="Determine the user's filing status for the tax year.",
+    description="Confirm filing status if not already captured.",
     required_fields=["filing_status"],
     next_step="personal_info",
 ))

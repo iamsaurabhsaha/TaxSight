@@ -44,30 +44,35 @@ Please consult a qualified tax professional for your specific situation."
 
 STEP_PROMPTS = {
     "welcome": """\
-Welcome the user to the AI Tax Prep Assistant for TAX YEAR {tax_year}. Briefly explain:
-- You'll walk them through their tax situation step by step for {tax_year}
-- They can upload documents or enter information manually
-- They can type /skip to skip optional steps, /back to go back, or /status to see progress
-- All data is stored locally on their machine
-- This is for informational purposes only, not official tax filing
+Welcome the user to the AI Tax Prep Assistant for TAX YEAR {tax_year} and immediately ask \
+their filing status. Combine the welcome and filing status into ONE message.
 
-IMPORTANT: Always refer to the tax year as {tax_year}. Never use any other year.
+Include these points briefly (2-3 sentences max):
+- You'll help estimate their {tax_year} taxes step by step
+- They can upload tax documents (W-2s, 1099s) and you'll extract the data automatically
+- You'll only ask what's needed for the estimate — no SSN, no name, no personal IDs
+- Data is stored locally, but document parsing uses their configured AI provider ({llm_provider})
+- Type /help for commands, /skip to skip optional steps
+- This is for informational estimates only
 
-Keep it warm and brief — 3-4 sentences max. End by asking if they're ready to get started.
-""",
-
-    "filing_status": """\
-Ask the user about their filing status for tax year {tax_year}.
-
-Explain the options briefly in plain English:
+Then immediately ask: What's your filing status?
 - Single
 - Married Filing Jointly
 - Married Filing Separately
-- Head of Household (unmarried with a dependent)
+- Head of Household
 - Qualifying Surviving Spouse
 
-If they're unsure, help them figure it out based on their situation \
-(married? have dependents? spouse passed away recently?).
+DO NOT ask "are you ready?" or wait for confirmation. Go straight to the filing status question.
+
+IMPORTANT: Always refer to the tax year as {tax_year}. Never use any other year.
+""",
+
+    "filing_status": """\
+The user should have already provided their filing status in response to the welcome message. \
+If they did, acknowledge it and move on. If not, ask them now.
+
+Valid options: Single, Married Filing Jointly, Married Filing Separately, \
+Head of Household, Qualifying Surviving Spouse.
 
 Extract their filing status as one of: "single", "married_filing_jointly", \
 "married_filing_separately", "head_of_household", "qualifying_surviving_spouse"
