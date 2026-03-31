@@ -138,12 +138,76 @@ class InterviewEngine:
         return {
             "tax_year": self.tax_year,
             "filing_status": self.profile.personal_info.filing_status or "not yet determined",
-            "profile_summary": json.dumps(summary, indent=2),
+            "profile_summary": self._get_rich_profile_summary(),
             "w2_count": len(self.profile.income.w2s) + 1,
             "total_federal_withholding": f"{self.profile.income.total_federal_withholding():,.2f}",
             "total_state_withholding": f"{self.profile.income.total_state_withholding():,.2f}",
             "document_summary": self._get_document_summary(),
         }
+
+    def _get_rich_profile_summary(self) -> str:
+        """Build a detailed profile summary the LLM can reference."""
+        p = self.profile
+        lines = []
+
+        lines.append(f"Name: {p.personal_info.first_name} {p.personal_info.last_name}")
+        lines.append(f"Age: {p.personal_info.age}")
+        lines.append(f"Filing Status: {p.personal_info.filing_status}")
+        lines.append(f"State: {p.personal_info.state_of_residence}")
+        lines.append(f"Dependents: {len(p.personal_info.dependents)}")
+
+        # Detailed income breakdown
+        if p.income.w2s:
+            lines.append(f"\nW-2 Income ({len(p.income.w2s)} form(s)):")
+            for w in p.income.w2s:
+                lines.append(f"  - {w.employer_name}: wages ${w.wages:,.2f}, federal withheld ${w.federal_withholding:,.2f}, state ({w.state}) withheld ${w.state_withholding:,.2f}")
+
+        if p.income.self_employment:
+            lines.append(f"\nSelf-Employment ({len(p.income.self_employment)} business(es)):")
+            for s in p.income.self_employment:
+                lines.append(f"  - {s.business_name}: gross ${s.gross_income:,.2f}, expenses ${s.expenses:,.2f}, net ${s.net_income:,.2f}")
+
+        if p.income.interest:
+            lines.append(f"\nInterest Income:")
+            for i in p.income.interest:
+                lines.append(f"  - {i.payer_name}: ${i.amount:,.2f}")
+
+        if p.income.dividends:
+            lines.append(f"\nDividend Income:")
+            for d in p.income.dividends:
+                lines.append(f"  - {d.payer_name}: ordinary ${d.ordinary_dividends:,.2f}, qualified ${d.qualified_dividends:,.2f}")
+
+        if p.income.capital_gains:
+            lines.append(f"\nCapital Gains/Losses:")
+            for c in p.income.capital_gains:
+                lines.append(f"  - {c.description}: proceeds ${c.proceeds:,.2f}, basis ${c.cost_basis:,.2f}, gain/loss ${c.gain_loss:,.2f}")
+
+        if p.income.retirement:
+            lines.append(f"\nRetirement Income:")
+            for r in p.income.retirement:
+                lines.append(f"  - {r.source}: gross ${r.gross_distribution:,.2f}, taxable ${r.taxable_amount:,.2f}")
+
+        if p.income.rental:
+            lines.append(f"\nRental Income:")
+            for r in p.income.rental:
+                lines.append(f"  - {r.property_description}: gross ${r.gross_rent:,.2f}, expenses ${r.expenses:,.2f}")
+
+        # Adjustments
+        adj = p.adjustments
+        adj_items = []
+        if adj.student_loan_interest: adj_items.append(f"Student loan interest: ${adj.student_loan_interest:,.2f}")
+        if adj.hsa_contributions: adj_items.append(f"HSA: ${adj.hsa_contributions:,.2f}")
+        if adj.ira_contributions: adj_items.append(f"IRA: ${adj.ira_contributions:,.2f}")
+        if adj_items:
+            lines.append(f"\nAdjustments: {', '.join(adj_items)}")
+
+        # Totals
+        lines.append(f"\nTOTALS:")
+        lines.append(f"  Total wages: ${p.income.total_wages():,.2f}")
+        lines.append(f"  Total federal withholding: ${p.income.total_federal_withholding():,.2f}")
+        lines.append(f"  Total state withholding: ${p.income.total_state_withholding():,.2f}")
+
+        return "\n".join(lines)
 
     def _get_document_summary(self) -> str:
         """Get a summary of uploaded documents and extracted data."""
