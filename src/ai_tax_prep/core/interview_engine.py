@@ -209,19 +209,37 @@ class InterviewEngine:
         return "\n".join(lines)
 
     def _get_document_summary(self) -> str:
-        """Get a summary of uploaded documents and extracted data."""
+        """Get a summary of uploaded documents and extracted data, excluding skipped ones."""
         try:
-            from ai_tax_prep.documents.parser import DocumentParser
+            from ai_tax_prep.documents.parser import DocumentParser, _safe_float
             parser = DocumentParser(self.session_id, self.llm)
             docs = parser.get_documents()
             if not docs:
                 return "No documents uploaded yet."
             lines = []
+            from ai_tax_prep.documents.schemas import DOC_TYPE_NAMES
             for doc in docs:
                 data = doc.get("extracted_data", {})
                 conf = doc.get("confidence", 0)
                 doc_type = doc.get("doc_type", "unknown")
-                from ai_tax_prep.documents.schemas import DOC_TYPE_NAMES
+
+                # Skip supplemental W-2s (low wages, same employer already captured)
+                if doc_type == "w2":
+                    wages = _safe_float(data.get("wages", 0))
+                    fed_wh = _safe_float(data.get("federal_withholding", 0))
+                    if wages < 500 and fed_wh == 0:
+                        # Check if another W-2 from same employer exists
+                        employer = data.get("employer_name", "").upper().strip()
+                        other_w2s = [
+                            d for d in docs
+                            if d.get("doc_type") == "w2"
+                            and d is not doc
+                            and d.get("extracted_data", {}).get("employer_name", "").upper().strip() == employer
+                            and _safe_float(d.get("extracted_data", {}).get("wages", 0)) >= 500
+                        ]
+                        if other_w2s:
+                            continue  # Skip this supplemental W-2
+
                 label = DOC_TYPE_NAMES.get(doc_type, doc_type)
                 lines.append(f"\n{label} (confidence: {conf:.0%}):")
                 for k, v in data.items():
