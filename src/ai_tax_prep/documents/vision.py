@@ -50,11 +50,40 @@ Return a JSON object with:
 Return valid JSON only.
 """
 
+CONSOLIDATED_EXTRACTION_PROMPT = """\
+This is a consolidated tax document containing multiple 1099 forms. \
+Extract ALL tax data from ALL sections.
+
+Return a JSON object with these keys (use 0.0 if a section is not present or value is zero):
+- "has_1099_b": true/false
+- "proceeds": total proceeds from 1099-B
+- "cost_basis": total cost basis from 1099-B
+- "net_gain_loss": net gain or loss from 1099-B
+- "has_1099_div": true/false
+- "ordinary_dividends": from 1099-DIV box 1a
+- "qualified_dividends": from 1099-DIV box 1b
+- "has_1099_int": true/false
+- "interest_income": from 1099-INT box 1
+- "tax_exempt_interest": from 1099-INT box 8
+- "has_1099_misc": true/false
+- "other_income": from 1099-MISC box 3
+- "federal_withholding": total federal tax withheld across all sections
+- "payer_name": name of the brokerage/institution
+
+Return valid JSON only. Extract ONLY what is explicitly in the document.
+
+Document text:
+{document_text}
+"""
+
 CLASSIFY_TEXT_PROMPT = """\
 Analyze this tax document text and identify what type of document it is.
 
+If this is a CONSOLIDATED statement containing multiple 1099 forms (1099-B, 1099-DIV, 1099-INT, etc.), \
+return doc_type as "consolidated_1099".
+
 Return a JSON object with:
-- "doc_type": one of: "w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "1098_e", "other"
+- "doc_type": one of: "w2", "1099_nec", "1099_int", "1099_div", "1099_b", "1099_r", "1098_e", "consolidated_1099", "other"
 - "confidence": a number from 0.0 to 1.0 indicating how confident you are
 
 Return valid JSON only.
@@ -84,6 +113,9 @@ def extract_with_vision(
     llm = llm or LLMClient()
     file_path = Path(file_path)
     suffix = file_path.suffix.lower()
+
+    if doc_type == "consolidated_1099":
+        return extract_consolidated_1099(file_path, llm)
 
     if suffix == ".pdf":
         return _extract_from_pdf(file_path, doc_type, llm)
@@ -143,6 +175,24 @@ def _classify_from_pdf(file_path: Path, llm: LLMClient) -> dict:
         }
     except Exception:
         return _classify_from_filename(file_path)
+
+
+def extract_consolidated_1099(file_path: str | Path, llm: LLMClient | None = None) -> dict:
+    """Extract all sections from a consolidated 1099 document."""
+    llm = llm or LLMClient()
+    file_path = Path(file_path)
+    text = _read_pdf_text(file_path)
+    if not text:
+        return {"extracted_data": {}, "confidence": 0.0}
+
+    prompt = CONSOLIDATED_EXTRACTION_PROMPT.format(document_text=text[:5000])
+    messages = [{"role": "user", "content": prompt}]
+
+    try:
+        result = llm.chat_json(messages)
+        return {"extracted_data": result, "confidence": 0.85}
+    except Exception as e:
+        return {"extracted_data": {}, "confidence": 0.0, "error": str(e)}
 
 
 def _extract_from_pdf(file_path: Path, doc_type: str, llm: LLMClient) -> dict:

@@ -69,7 +69,10 @@ class TestDocTypeRegistries:
         assert set(DOC_TYPE_SCHEMAS.keys()) == expected
 
     def test_names_complete(self):
-        assert set(DOC_TYPE_NAMES.keys()) == set(DOC_TYPE_SCHEMAS.keys())
+        # Names includes consolidated_1099 which has no schema (uses custom extraction)
+        for key in DOC_TYPE_SCHEMAS:
+            assert key in DOC_TYPE_NAMES, f"{key} missing from DOC_TYPE_NAMES"
+        assert "consolidated_1099" in DOC_TYPE_NAMES
 
     def test_all_schemas_are_pydantic(self):
         for name, schema in DOC_TYPE_SCHEMAS.items():

@@ -88,4 +88,5 @@ DOC_TYPE_NAMES = {
     "1099_b": "1099-B (Proceeds from Broker Transactions)",
     "1099_r": "1099-R (Retirement Distributions)",
     "1098_e": "1098-E (Student Loan Interest)",
+    "consolidated_1099": "Consolidated 1099 (Multiple Forms)",
 }

@@ -254,6 +254,40 @@ class DocumentParser:
             if interest_amount > 0:
                 profile.adjustments.student_loan_interest = interest_amount
 
+        elif doc_type == "consolidated_1099":
+            payer = extracted_data.get("payer_name", "Brokerage")
+
+            # 1099-INT section
+            interest = _safe_float(extracted_data.get("interest_income", 0))
+            if interest > 0:
+                from ai_tax_prep.core.tax_profile import InterestIncome as II
+                profile.income.interest.append(II(
+                    payer_name=payer,
+                    amount=interest,
+                    is_tax_exempt=_safe_float(extracted_data.get("tax_exempt_interest", 0)) > 0,
+                ))
+
+            # 1099-DIV section
+            ord_div = _safe_float(extracted_data.get("ordinary_dividends", 0))
+            if ord_div > 0:
+                profile.income.dividends.append(DividendIncome(
+                    payer_name=payer,
+                    ordinary_dividends=ord_div,
+                    qualified_dividends=_safe_float(extracted_data.get("qualified_dividends", 0)),
+                ))
+
+            # 1099-B section
+            proceeds = _safe_float(extracted_data.get("proceeds", 0))
+            cost_basis = _safe_float(extracted_data.get("cost_basis", 0))
+            if proceeds > 0 or cost_basis > 0:
+                from ai_tax_prep.core.tax_profile import CapitalGain as CG
+                profile.income.capital_gains.append(CG(
+                    description=f"Consolidated 1099 - {payer}",
+                    proceeds=proceeds,
+                    cost_basis=cost_basis,
+                    is_long_term=True,
+                ))
+
         return profile
 
     def get_documents(self) -> list[dict]:
