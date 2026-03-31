@@ -414,6 +414,11 @@ def _run_auto_calculate(engine: InterviewEngine, session):
         if do_whatif in ("yes", "y"):
             _run_whatif_loop(tax_engine, engine.profile, session, format_currency)
 
+        console.print()
+        console.print("[bold]Thank you for using TaxSight![/bold]")
+        console.print("For feedback or questions: [link=https://www.linkedin.com/in/iamsaurabhsaha/]linkedin.com/in/iamsaurabhsaha[/link]")
+        console.print()
+
     except Exception as e:
         console.print(f"[red]Error calculating taxes:[/red] {e}")
         console.print("You can try manually: taxsight calculate --name \"" + session.name + "\"")
