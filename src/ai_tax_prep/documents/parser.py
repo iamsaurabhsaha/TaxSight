@@ -161,10 +161,19 @@ class DocumentParser:
         """Apply extracted document data to a tax profile."""
         if doc_type == "w2":
             wages = _safe_float(extracted_data.get("wages", 0))
-            # Skip supplemental W-2s with $0 or near-zero Box 1 wages
-            # (e.g., NJ payroll tax W-2s that only have state/local info)
+            fed_withholding = _safe_float(extracted_data.get("federal_withholding", 0))
+            # Skip supplemental W-2s:
+            # - Near-zero wages (< $1)
+            # - Very small wages (< $500) with $0 federal withholding from same employer
+            #   (likely NJ UI/WF/SWF payroll tax W-2)
             if wages < 1.0:
                 return profile
+            if wages < 500 and fed_withholding == 0:
+                # Check if we already have a W-2 from the same employer
+                employer = extracted_data.get("employer_name", "").upper().strip()
+                existing_employers = [w.employer_name.upper().strip() for w in profile.income.w2s]
+                if employer and employer in existing_employers:
+                    return profile  # Skip — supplemental W-2 from same employer
             w2 = W2Income(
                 employer_name=extracted_data.get("employer_name", ""),
                 employer_ein=extracted_data.get("employer_ein", ""),
