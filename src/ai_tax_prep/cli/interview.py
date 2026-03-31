@@ -167,13 +167,8 @@ def run_interview(
         action = result["action"]
         if action == "complete":
             console.print()
-            console.print(Panel(
-                "[bold green]Interview complete![/bold green]\n\n"
-                "You can now:\n"
-                "  • Run [bold]tax-prep calculate[/bold] to get your tax estimate\n"
-                "  • Run [bold]tax-prep report generate[/bold] to create a PDF summary",
-                border_style="green",
-            ))
+            # Auto-calculate and show results
+            _run_auto_calculate(engine, session)
             break
 
         elif action == "next":
@@ -264,6 +259,78 @@ def _handle_multi_upload(engine: InterviewEngine, raw_input: str):
 
     console.print()
     console.print(f"[dim]Processed {success_count} document(s). Paste more paths, or press Enter when done.[/dim]")
+
+
+def _run_auto_calculate(engine: InterviewEngine, session):
+    """Auto-calculate taxes at the end of the interview and show results."""
+    from ai_tax_prep.tax.engine import TaxEngine
+    from ai_tax_prep.export.templates import format_currency
+
+    console.print(Panel("[bold]Calculating your tax estimate...[/bold]", border_style="green"))
+
+    try:
+        tax_engine = TaxEngine(session_id=session.id)
+        result = tax_engine.calculate(engine.profile)
+
+        federal_ro = result.get("federal_refund_or_owed", 0)
+        state_ro = result.get("state_refund_or_owed", 0)
+        total_ro = result.get("total_refund_or_owed", 0)
+
+        # Build results display
+        lines = []
+        lines.append(f"[bold]Federal Income Tax:[/bold] {format_currency(result.get('federal_income_tax', 0))}")
+        se_tax = result.get('se_tax_detail', {}).get('total_se_tax', 0)
+        if se_tax > 0:
+            lines.append(f"[bold]Self-Employment Tax:[/bold] {format_currency(se_tax)}")
+        lines.append(f"[bold]State Income Tax ({result.get('state', '')}):[/bold] {format_currency(result.get('state_income_tax', 0))}")
+        lines.append("")
+
+        # Federal result
+        if federal_ro >= 0:
+            lines.append(f"[bold green]Federal Refund: {format_currency(federal_ro)}[/bold green]")
+        else:
+            lines.append(f"[bold red]Federal Amount Owed: {format_currency(abs(federal_ro))}[/bold red]")
+
+        # State result
+        if state_ro >= 0:
+            lines.append(f"[bold green]State Refund: {format_currency(state_ro)}[/bold green]")
+        else:
+            lines.append(f"[bold red]State Amount Owed: {format_currency(abs(state_ro))}[/bold red]")
+
+        lines.append("")
+        if total_ro >= 0:
+            lines.append(f"[bold green]>>> TOTAL REFUND: {format_currency(total_ro)} <<<[/bold green]")
+        else:
+            lines.append(f"[bold red]>>> TOTAL OWED: {format_currency(abs(total_ro))} <<<[/bold red]")
+
+        lines.append("")
+        lines.append(f"Effective Tax Rate: {result.get('effective_total_rate', 0):.1f}%")
+
+        console.print(Panel("\n".join(lines), title="Tax Estimate Results", border_style="cyan"))
+
+        # Show warnings
+        for warning in result.get("warnings", []):
+            console.print(Panel(warning, title="Note", border_style="yellow"))
+
+        # Show suggestions summary
+        suggestions = result.get("deduction_credit_suggestions", [])
+        applicable = [s for s in suggestions if s.get("applies") is True]
+        if applicable:
+            console.print()
+            console.print("[bold]Tax Savings Opportunities:[/bold]")
+            for s in applicable[:3]:
+                value = f" ({format_currency(s['estimated_value'])})" if s.get("estimated_value") else ""
+                console.print(f"  [green]•[/green] {s['name']}{value}")
+
+        console.print()
+        console.print("[dim]For a detailed PDF report: tax-prep report --name \"" + session.name + "\"[/dim]")
+        console.print("[dim]For what-if scenarios: tax-prep what-if --name \"" + session.name + "\" -s \"ira_contribution=7000\"[/dim]")
+        console.print()
+        console.print("[dim]Disclaimer: This is an estimate for informational purposes only. Not professional tax advice.[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Error calculating taxes:[/red] {e}")
+        console.print("You can try manually: tax-prep calculate --name \"" + session.name + "\"")
 
 
 def _finish_document_upload(engine: InterviewEngine):
