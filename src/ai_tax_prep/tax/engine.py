@@ -291,7 +291,7 @@ Mention the effective tax rate. End with the disclaimer that this is an estimate
             "standard_deduction": std_ded,
             "itemizes": False,
             "eitc": 0,
-            "child_tax_credit": len(profile.personal_info.dependents) * 2000,
+            "child_tax_credit": sum(2000 for d in profile.personal_info.dependents if d.age < 17) ,
             "self_employment_tax": 0,
             "state_income_tax": state_tax,
             "phaseout_warnings": phaseout_result["warnings"],
