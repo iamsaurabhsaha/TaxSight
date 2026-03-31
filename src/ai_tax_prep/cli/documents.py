@@ -74,7 +74,7 @@ def upload(
     if result["needs_review"]:
         console.print()
         console.print("[yellow]This document needs review due to low confidence.[/yellow]")
-        console.print("Run [bold]tax-prep docs review[/bold] to verify extracted data.")
+        console.print("Run [bold]taxsight docs review[/bold] to verify extracted data.")
 
     # Ask if user wants to apply to profile
     console.print()

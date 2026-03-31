@@ -347,7 +347,7 @@ class DocumentParser:
         if needs_review:
             warnings.append(
                 f"{len(needs_review)} document(s) have low extraction confidence "
-                "and need manual review. Run `tax-prep docs review` to verify."
+                "and need manual review. Run `taxsight docs review` to verify."
             )
 
         # Check withholding consistency across docs

@@ -26,7 +26,7 @@ def run_calculate(session_name: str):
     profile = manager.get_tax_profile(session.id)
     if not profile.personal_info.filing_status:
         console.print("[red]No tax profile data. Run the interview first:[/red]")
-        console.print(f"  tax-prep interview --name \"{session_name}\"")
+        console.print(f"  taxsight interview --name \"{session_name}\"")
         raise typer.Exit(1)
 
     engine = TaxEngine(session_id=session.id)
@@ -63,7 +63,7 @@ def run_calculate(session_name: str):
                 console.print(f"  [yellow]?[/yellow] {s['name']} — {s['explanation'][:80]}...")
 
     console.print()
-    console.print(f"[dim]Run 'tax-prep report --name \"{session_name}\"' to generate a PDF report.[/dim]")
+    console.print(f"[dim]Run 'taxsight report --name \"{session_name}\"' to generate a PDF report.[/dim]")
 
 
 def run_report(session_name: str, output: str | None = None):

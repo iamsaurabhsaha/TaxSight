@@ -44,7 +44,7 @@ Please consult a qualified tax professional for your specific situation."
 
 STEP_PROMPTS = {
     "welcome": """\
-Welcome the user to the AI Tax Prep Assistant for TAX YEAR {tax_year} and immediately ask \
+Welcome the user to the TaxSight for TAX YEAR {tax_year} and immediately ask \
 their filing status. Combine the welcome and filing status into ONE message.
 
 Include these points briefly (2-3 sentences max):
@@ -409,9 +409,9 @@ Current profile: {profile_summary}
 Let the user know the interview is complete!
 
 Tell them they can now:
-- Run `tax-prep calculate` to get their tax estimate
-- Run `tax-prep report generate` to create a PDF summary
-- Run `tax-prep session list` to see their saved sessions
+- Run `taxsight calculate` to get their tax estimate
+- Run `taxsight report generate` to create a PDF summary
+- Run `taxsight session list` to see their saved sessions
 
 Thank them and remind them this is for informational purposes only.
 """,

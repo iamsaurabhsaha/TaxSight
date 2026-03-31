@@ -43,12 +43,12 @@ def run_interview(
         session = manager.get_session_by_name(session_name)
 
     if not session:
-        console.print("[red]Session not found.[/red] Create one first with: tax-prep session create --name <name>")
+        console.print("[red]Session not found.[/red] Create one first with: taxsight session create --name <name>")
         raise typer.Exit(1)
 
     console.print()
     console.print(Panel(
-        f"[bold]Tax Prep Interview[/bold] — {session.name} (Tax Year {session.tax_year})\n"
+        f"[bold]TaxSight Interview[/bold] — {session.name} (Tax Year {session.tax_year})\n"
         f"Type [bold]/help[/bold] for commands, [bold]/quit[/bold] to save and exit.",
         border_style="blue",
     ))
@@ -106,7 +106,7 @@ def run_interview(
 
             if command == "/quit" or command == "/exit":
                 console.print("[dim]Progress saved. You can resume with:[/dim]")
-                console.print(f"  tax-prep interview --name \"{session.name}\"")
+                console.print(f"  taxsight interview --name \"{session.name}\"")
                 break
 
             elif command == "/help":
@@ -393,14 +393,14 @@ def _run_auto_calculate(engine: InterviewEngine, session):
                 console.print(f"  [green]•[/green] {s['name']}{value}")
 
         console.print()
-        console.print("[dim]For a detailed PDF report: tax-prep report --name \"" + session.name + "\"[/dim]")
-        console.print("[dim]For what-if scenarios: tax-prep what-if --name \"" + session.name + "\" -s \"ira_contribution=7000\"[/dim]")
+        console.print("[dim]For a detailed PDF report: taxsight report --name \"" + session.name + "\"[/dim]")
+        console.print("[dim]For what-if scenarios: taxsight what-if --name \"" + session.name + "\" -s \"ira_contribution=7000\"[/dim]")
         console.print()
         console.print("[dim]Disclaimer: This is an estimate for informational purposes only. Not professional tax advice.[/dim]")
 
     except Exception as e:
         console.print(f"[red]Error calculating taxes:[/red] {e}")
-        console.print("You can try manually: tax-prep calculate --name \"" + session.name + "\"")
+        console.print("You can try manually: taxsight calculate --name \"" + session.name + "\"")
 
 
 def _finish_document_upload(engine: InterviewEngine):

@@ -11,8 +11,8 @@ from ai_tax_prep.core.session import SessionManager
 from ai_tax_prep.llm.client import LLMClient
 
 app = typer.Typer(
-    name="tax-prep",
-    help="AI Tax Prep Assistant — Privacy-first tax preparation with BYOK LLM support.",
+    name="taxsight",
+    help="TaxSight — Privacy-first tax preparation with BYOK LLM support.",
     no_args_is_help=True,
 )
 console = Console()
@@ -90,7 +90,7 @@ def session_list(
         console.print("[dim]No sessions found.[/dim]")
         return
 
-    table = Table(title="Tax Prep Sessions")
+    table = Table(title="TaxSight Sessions")
     table.add_column("Name", style="bold")
     table.add_column("Year")
     table.add_column("Status")
@@ -186,7 +186,7 @@ def what_if(
 @app.command()
 def version():
     """Show version."""
-    console.print(f"AI Tax Prep Assistant v{__version__}")
+    console.print(f"TaxSight v{__version__}")
 
 
 @app.callback()
@@ -194,7 +194,7 @@ def main(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed output"),
     debug: bool = typer.Option(False, "--debug", help="Show debug information"),
 ):
-    """AI Tax Prep Assistant — Privacy-first tax preparation with BYOK LLM support."""
+    """TaxSight — Privacy-first tax preparation with BYOK LLM support."""
     import logging
 
     if debug:

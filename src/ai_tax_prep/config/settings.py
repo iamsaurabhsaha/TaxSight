@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-APP_DIR = Path.home() / ".ai-tax-prep"
+APP_DIR = Path.home() / ".taxsight"
 
 DEFAULT_MODELS = {
     "anthropic": "anthropic/claude-sonnet-4-20250514",
