@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ai-tax-prep"
+name = "taxsight"
 version = "0.1.0"
-description = "Privacy-first AI Tax Preparation Assistant with BYOK LLM support"
+description = "TaxSight - Privacy-first AI tax preparation tool with BYOK LLM support"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.11"
@@ -40,7 +40,7 @@ dev = [
 ]
 
 [project.scripts]
-tax-prep = "ai_tax_prep.cli.app:app"
+taxsight = "ai_tax_prep.cli.app:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_tax_prep"]

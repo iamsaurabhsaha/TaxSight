@@ -282,37 +282,101 @@ def _run_auto_calculate(engine: InterviewEngine, session):
         state_ro = result.get("state_refund_or_owed", 0)
         total_ro = result.get("total_refund_or_owed", 0)
 
-        # Build results display
-        lines = []
-        lines.append(f"[bold]Federal Income Tax:[/bold] {format_currency(result.get('federal_income_tax', 0))}")
+        # Step-by-step breakdown
+        breakdown = []
+        breakdown.append("[bold underline]INCOME[/bold underline]")
+        breakdown.append(f"  Wages (W-2):                {format_currency(engine.profile.income.total_wages())}")
+        interest = engine.profile.income.total_interest()
+        if interest > 0:
+            breakdown.append(f"  Interest Income:            {format_currency(interest)}")
+        dividends = engine.profile.income.total_dividends()
+        if dividends > 0:
+            qual = engine.profile.income.total_qualified_dividends()
+            breakdown.append(f"  Dividends:                  {format_currency(dividends)} ({format_currency(qual)} qualified)")
+        se = engine.profile.income.total_self_employment()
+        if se > 0:
+            breakdown.append(f"  Self-Employment:            {format_currency(se)}")
+        cg = engine.profile.income.total_capital_gains()
+        if cg != 0:
+            breakdown.append(f"  Capital Gains/Losses:       {format_currency(cg)}")
+        rental = engine.profile.income.total_rental()
+        if rental != 0:
+            breakdown.append(f"  Rental Income:              {format_currency(rental)}")
+        retirement = engine.profile.income.total_retirement()
+        if retirement > 0:
+            breakdown.append(f"  Retirement (taxable):       {format_currency(retirement)}")
+        breakdown.append(f"  [bold]Total Gross Income:        {format_currency(result.get('total_gross_income', 0))}[/bold]")
+
+        breakdown.append("")
+        breakdown.append("[bold underline]ADJUSTMENTS[/bold underline]")
+        adj = engine.profile.adjustments
+        if adj.student_loan_interest > 0:
+            breakdown.append(f"  Student Loan Interest:      {format_currency(adj.student_loan_interest)} (see note below)")
+        if adj.hsa_contributions > 0:
+            breakdown.append(f"  HSA Contributions:          {format_currency(adj.hsa_contributions)}")
+        if adj.ira_contributions > 0:
+            breakdown.append(f"  IRA Contributions:          {format_currency(adj.ira_contributions)}")
+        if adj.total() == 0:
+            breakdown.append("  (none)")
+        breakdown.append(f"  [bold]Adjusted Gross Income:     {format_currency(result.get('agi', 0))}[/bold]")
+
+        breakdown.append("")
+        breakdown.append("[bold underline]DEDUCTIONS[/bold underline]")
+        if result.get('itemizes'):
+            breakdown.append(f"  Method: Itemized")
+            breakdown.append(f"  Itemized Total:             {format_currency(result.get('itemized_total', 0))}")
+        else:
+            breakdown.append(f"  Method: Standard Deduction")
+            breakdown.append(f"  Standard Deduction:         {format_currency(result.get('standard_deduction', 0))}")
+        breakdown.append(f"  [bold]Taxable Income:            {format_currency(result.get('taxable_income', 0))}[/bold]")
+
+        breakdown.append("")
+        breakdown.append("[bold underline]FEDERAL TAX[/bold underline]")
+        breakdown.append(f"  Income Tax:                 {format_currency(result.get('federal_income_tax', 0))}")
         se_tax = result.get('se_tax_detail', {}).get('total_se_tax', 0)
         if se_tax > 0:
-            lines.append(f"[bold]Self-Employment Tax:[/bold] {format_currency(se_tax)}")
-        lines.append(f"[bold]State Income Tax ({result.get('state', '')}):[/bold] {format_currency(result.get('state_income_tax', 0))}")
-        lines.append("")
+            breakdown.append(f"  Self-Employment Tax:        {format_currency(se_tax)}")
+        breakdown.append(f"  [bold]Total Federal Tax:         {format_currency(result.get('total_federal_tax', 0))}[/bold]")
 
-        # Federal result
+        if result.get('eitc', 0) > 0 or result.get('child_tax_credit', 0) > 0:
+            breakdown.append("")
+            breakdown.append("[bold underline]CREDITS[/bold underline]")
+            if result.get('eitc', 0) > 0:
+                breakdown.append(f"  Earned Income Credit:       {format_currency(result['eitc'])}")
+            if result.get('child_tax_credit', 0) > 0:
+                breakdown.append(f"  Child Tax Credit:           {format_currency(result['child_tax_credit'])}")
+
+        breakdown.append("")
+        breakdown.append("[bold underline]STATE TAX ({0})[/bold underline]".format(result.get('state', '')))
+        breakdown.append(f"  State Income Tax:           {format_currency(result.get('state_income_tax', 0))}")
+
+        breakdown.append("")
+        breakdown.append("[bold underline]PAYMENTS & WITHHOLDING[/bold underline]")
+        breakdown.append(f"  Federal Withheld (W-2):     {format_currency(result.get('federal_withholding', 0))}")
+        if result.get('estimated_federal_payments', 0) > 0:
+            breakdown.append(f"  Estimated Payments:         {format_currency(result['estimated_federal_payments'])}")
+        breakdown.append(f"  State Withheld (W-2):       {format_currency(result.get('state_withholding', 0))}")
+
+        breakdown.append("")
+        breakdown.append("[bold underline]RESULT[/bold underline]")
         if federal_ro >= 0:
-            lines.append(f"[bold green]Federal Refund: {format_currency(federal_ro)}[/bold green]")
+            breakdown.append(f"  [green]Federal Refund:            {format_currency(federal_ro)}[/green]")
         else:
-            lines.append(f"[bold red]Federal Amount Owed: {format_currency(abs(federal_ro))}[/bold red]")
-
-        # State result
+            breakdown.append(f"  [red]Federal Amount Owed:       {format_currency(abs(federal_ro))}[/red]")
         if state_ro >= 0:
-            lines.append(f"[bold green]State Refund: {format_currency(state_ro)}[/bold green]")
+            breakdown.append(f"  [green]State Refund:              {format_currency(state_ro)}[/green]")
         else:
-            lines.append(f"[bold red]State Amount Owed: {format_currency(abs(state_ro))}[/bold red]")
+            breakdown.append(f"  [red]State Amount Owed:         {format_currency(abs(state_ro))}[/red]")
 
-        lines.append("")
+        breakdown.append("")
         if total_ro >= 0:
-            lines.append(f"[bold green]>>> TOTAL REFUND: {format_currency(total_ro)} <<<[/bold green]")
+            breakdown.append(f"  [bold green]>>> TOTAL REFUND: {format_currency(total_ro)} <<<[/bold green]")
         else:
-            lines.append(f"[bold red]>>> TOTAL OWED: {format_currency(abs(total_ro))} <<<[/bold red]")
+            breakdown.append(f"  [bold red]>>> TOTAL OWED: {format_currency(abs(total_ro))} <<<[/bold red]")
+        breakdown.append("")
+        breakdown.append(f"  Effective Tax Rate: {result.get('effective_total_rate', 0):.1f}%")
 
-        lines.append("")
-        lines.append(f"Effective Tax Rate: {result.get('effective_total_rate', 0):.1f}%")
-
-        console.print(Panel("\n".join(lines), title="Tax Estimate Results", border_style="cyan"))
+        console.print(Panel("\n".join(breakdown), title="Tax Estimate Breakdown", border_style="cyan"))
 
         # Show warnings
         for warning in result.get("warnings", []):

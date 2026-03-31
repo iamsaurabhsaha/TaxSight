@@ -1,4 +1,4 @@
-# AI Tax Prep Assistant
+# TaxSight
 
 Privacy-first AI tax preparation tool with BYOK (Bring Your Own Key) LLM support. Estimates your US federal and state taxes through a conversational interview, with document parsing and what-if scenario modeling.
 
@@ -29,8 +29,8 @@ Privacy-first AI tax preparation tool with BYOK (Bring Your Own Key) LLM support
 
 ```bash
 # Clone the repo
-git clone https://github.com/iamsaurabhsaha/ai-tax-prep.git
-cd ai-tax-prep
+git clone https://github.com/iamsaurabhsaha/TaxSight.git
+cd TaxSight
 
 # Create virtual environment
 python3.12 -m venv .venv
@@ -67,39 +67,39 @@ GEMINI_API_KEY=AI...
 
 ```bash
 # 1. Test your LLM connection
-tax-prep config test
+taxsight config test
 
 # 2. Create a session
-tax-prep session create --name "my-taxes" --year 2025
+taxsight session create --name "my-taxes" --year 2025
 
 # 3. Start the interview (run in terminal, not through another tool)
-tax-prep interview --name "my-taxes"
+taxsight interview --name "my-taxes"
 
 # 4. Calculate your taxes
-tax-prep calculate --name "my-taxes"
+taxsight calculate --name "my-taxes"
 
 # 5. Generate a PDF report
-tax-prep report --name "my-taxes"
+taxsight report --name "my-taxes"
 ```
 
 ### All Commands
 
 #### Session Management
 ```bash
-tax-prep session create --name "2025-taxes" --year 2025
-tax-prep session list
-tax-prep session delete --name "2025-taxes"
+taxsight session create --name "2025-taxes" --year 2025
+taxsight session list
+taxsight session delete --name "2025-taxes"
 ```
 
 #### Configuration
 ```bash
-tax-prep config show      # Show current provider and settings
-tax-prep config test      # Test LLM connection
+taxsight config show      # Show current provider and settings
+taxsight config test      # Test LLM connection
 ```
 
 #### Tax Interview
 ```bash
-tax-prep interview --name "2025-taxes"
+taxsight interview --name "2025-taxes"
 ```
 
 During the interview, you can use these commands:
@@ -112,16 +112,16 @@ During the interview, you can use these commands:
 #### Document Upload
 ```bash
 # Upload a tax document (auto-detects type)
-tax-prep docs upload w2.png --session "2025-taxes"
+taxsight docs upload w2.png --session "2025-taxes"
 
 # Specify document type
-tax-prep docs upload 1099.pdf --session "2025-taxes" --type 1099_nec
+taxsight docs upload 1099.pdf --session "2025-taxes" --type 1099_nec
 
 # List uploaded documents
-tax-prep docs list --session "2025-taxes"
+taxsight docs list --session "2025-taxes"
 
 # Cross-reference documents for issues
-tax-prep docs check --session "2025-taxes"
+taxsight docs check --session "2025-taxes"
 ```
 
 Supported document types: `w2`, `1099_nec`, `1099_int`, `1099_div`, `1099_b`, `1099_r`
@@ -129,18 +129,18 @@ Supported document types: `w2`, `1099_nec`, `1099_int`, `1099_div`, `1099_b`, `1
 #### Tax Calculation
 ```bash
 # Calculate tax estimate
-tax-prep calculate --name "2025-taxes"
+taxsight calculate --name "2025-taxes"
 
 # What-if scenarios
-tax-prep what-if --name "2025-taxes" --scenario "ira_contribution=7000"
-tax-prep what-if --name "2025-taxes" --scenario "charitable_donation=5000"
-tax-prep what-if --name "2025-taxes" --scenario "use_itemized=true"
+taxsight what-if --name "2025-taxes" --scenario "ira_contribution=7000"
+taxsight what-if --name "2025-taxes" --scenario "charitable_donation=5000"
+taxsight what-if --name "2025-taxes" --scenario "use_itemized=true"
 ```
 
 #### PDF Report
 ```bash
-tax-prep report --name "2025-taxes"
-tax-prep report --name "2025-taxes" --output my_report.pdf
+taxsight report --name "2025-taxes"
+taxsight report --name "2025-taxes" --output my_report.pdf
 ```
 
 ## Architecture
