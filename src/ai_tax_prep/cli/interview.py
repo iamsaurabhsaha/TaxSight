@@ -524,8 +524,9 @@ def _finish_document_upload(engine: InterviewEngine):
     deduction = console.input("[bold green]Standard deduction or itemized? (standard/itemized/auto):[/bold green] ").strip().lower()
     if deduction == "itemized":
         engine.profile.use_itemized = True
+        console.print("[dim]Using itemized deductions.[/dim]")
         console.print()
-        console.print("[dim]For itemized, I'll need a few amounts:[/dim]")
+        console.print("[dim]I'll need a few amounts:[/dim]")
         try:
             salt = console.input("  State/local taxes paid (SALT, max $10K): $").strip()
             mortgage = console.input("  Mortgage interest: $").strip()
@@ -534,12 +535,16 @@ def _finish_document_upload(engine: InterviewEngine):
             engine.profile.itemized_deductions.state_local_taxes = min(_safe_float(salt), 10000)
             engine.profile.itemized_deductions.mortgage_interest = _safe_float(mortgage)
             engine.profile.itemized_deductions.charitable_cash = _safe_float(charity)
+            total = engine.profile.itemized_deductions.total()
+            console.print(f"[dim]Itemized total: ${total:,.2f}[/dim]")
         except (KeyboardInterrupt, EOFError):
             pass
     elif deduction == "auto":
         engine.profile.use_itemized = None
+        console.print("[dim]Auto mode — I'll compare both and use whichever saves you more.[/dim]")
     else:
         engine.profile.use_itemized = False
+        console.print("[dim]Using standard deduction ($15,000 for single, $30,000 for MFJ).[/dim]")
 
     engine._save_profile()
 
