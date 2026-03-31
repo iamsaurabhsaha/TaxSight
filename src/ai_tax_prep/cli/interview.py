@@ -74,10 +74,20 @@ def run_interview(
             break
 
         if not user_input:
-            # Empty input during document_upload = done uploading
-            if engine.current_step_id in ("document_upload", "document_review", "income_gaps"):
+            # Empty input = done uploading (if documents were uploaded)
+            doc_summary = engine._get_document_summary()
+            if "No documents uploaded" not in doc_summary:
                 _finish_document_upload(engine)
+                break  # Exit interview loop — calculation already shown
             continue
+
+        # "done" / "Done" also triggers document review
+        if user_input.lower().strip() == "done":
+            doc_summary = engine._get_document_summary()
+            if "No documents uploaded" not in doc_summary:
+                _finish_document_upload(engine)
+                break
+            # No docs, treat as regular input
 
         # Check for file paths on ANY income-related step (not just document_upload)
         # This handles cases where the step already advanced but user still has documents
@@ -330,36 +340,82 @@ def _run_auto_calculate(engine: InterviewEngine, session):
 
 
 def _finish_document_upload(engine: InterviewEngine):
-    """Show document summary and advance past document steps."""
+    """Show document summary, ask quick questions, then calculate."""
     docs = engine._get_document_summary()
     if "No documents uploaded" in docs:
         console.print()
         console.print("[dim]No documents uploaded. Moving to manual entry...[/dim]")
+        # Fall back to manual interview flow
+        engine.current_step_id = "income_sources"
+        engine._update_session_step("income_sources")
+        _display_step_message(engine)
+        return
+
+    # Show what we extracted
+    console.print()
+    console.print(Panel(docs, title="Documents Uploaded", border_style="blue"))
+    console.print()
+
+    # Quick confirmation
+    confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip()
+    confirm_lower = confirm.lower()
+    if confirm_lower in ("no", "n"):
+        console.print("[dim]Paste corrected document paths or type /skip to enter manually.[/dim]")
+        return
+    if _looks_like_file_path(confirm.replace("\\ ", " ")):
+        _handle_document_upload(engine, confirm.replace("\\ ", " "))
+        return
+    if confirm_lower not in ("yes", "y", ""):
+        engine._save_message("user", confirm)
+        console.print("[dim]Noted.[/dim]")
+
+    # Quick questions that documents can't answer
+    console.print()
+    dependents = console.input("[bold green]Do you have any dependents? (yes/no):[/bold green] ").strip().lower()
+    if dependents in ("yes", "y"):
+        num = console.input("[bold green]How many, and their ages? (e.g., '2 kids, ages 5 and 8'):[/bold green] ").strip()
+        engine._save_message("user", f"Dependents: {num}")
+        # Parse basic dependent info
+        import re
+        ages = re.findall(r'\b(\d{1,2})\b', num)
+        for i, age_str in enumerate(ages):
+            from ai_tax_prep.core.tax_profile import Dependent
+            engine.profile.personal_info.dependents.append(
+                Dependent(relationship="child", age=int(age_str))
+            )
+        engine._save_profile()
+        console.print(f"[dim]Added {len(ages)} dependent(s).[/dim]")
+
+    console.print()
+    deduction = console.input("[bold green]Standard deduction or itemized? (standard/itemized/auto):[/bold green] ").strip().lower()
+    if deduction == "itemized":
+        engine.profile.use_itemized = True
+        console.print()
+        console.print("[dim]For itemized, I'll need a few amounts:[/dim]")
+        try:
+            salt = console.input("  State/local taxes paid (SALT, max $10K): $").strip()
+            mortgage = console.input("  Mortgage interest: $").strip()
+            charity = console.input("  Charitable donations: $").strip()
+            from ai_tax_prep.documents.parser import _safe_float
+            engine.profile.itemized_deductions.state_local_taxes = min(_safe_float(salt), 10000)
+            engine.profile.itemized_deductions.mortgage_interest = _safe_float(mortgage)
+            engine.profile.itemized_deductions.charitable_cash = _safe_float(charity)
+        except (KeyboardInterrupt, EOFError):
+            pass
+    elif deduction == "auto":
+        engine.profile.use_itemized = None
     else:
-        console.print()
-        console.print(Panel(docs, title="Documents Uploaded", border_style="blue"))
-        console.print()
-        confirm = console.input("[bold green]Does this look correct? (yes/no/upload more):[/bold green] ").strip()
-        confirm_lower = confirm.lower()
-        if confirm_lower in ("no", "n"):
-            console.print("[dim]Paste corrected document paths or type /skip to enter manually.[/dim]")
-            return
-        if _looks_like_file_path(confirm.replace("\\ ", " ")):
-            _handle_document_upload(engine, confirm.replace("\\ ", " "))
-            return
-        if confirm_lower not in ("yes", "y", ""):
-            # User typed a correction or comment — save it so LLM sees it in context
-            engine._save_message("user", confirm)
-            console.print("[dim]Noted. I'll take that into account.[/dim]")
+        engine.profile.use_itemized = False
 
-    # Advance to adjustments (skip document_review and income_gaps if we have docs)
-    from ai_tax_prep.core.interview_steps import get_step
-    target = "adjustments" if "No documents" not in docs else "income_sources"
+    engine._save_profile()
 
-    # If we have document data, skip manual income entry
-    engine.current_step_id = target
-    engine._update_session_step(target)
-    _display_step_message(engine)
+    # Go straight to calculation — no more LLM chat steps
+    console.print()
+    # Need session object for _run_auto_calculate
+    from ai_tax_prep.core.session import SessionManager
+    mgr = SessionManager()
+    session = mgr.get_session(engine.session_id)
+    _run_auto_calculate(engine, session)
 
 
 def _looks_like_file_path(text: str) -> bool:
